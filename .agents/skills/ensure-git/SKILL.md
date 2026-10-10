@@ -9,19 +9,26 @@ Check fails: give fix, one step, wait. Interactive cmd: tell user run `! <cmd>`.
 User gives up: report failed.
 
 ## account
-Setup file `.bootstrap/setup.json` has `github.login`: saved. Read only.
+Setup file `.bootstrap/setup.json` has `github.login`, `github.email`: saved. Read only.
 gh logins: `gh auth status -h github.com`.
 Saved still logged in, or only one login: use it. Many: ask user which, ask tool, one option per login.
 None: check 3 sets it.
 Not active: ask OK, `gh auth switch -h github.com -u <login>`.
 ssh key and gh must be this account.
 
+## email
+One <email> for whole run. Find, first hit wins:
+1 saved `github.email`. 2 `git config --global user.email`. 3 gh: `gh api user -q .email`, else noreply `<id>+<login>@users.noreply.github.com` (`gh api user -q .id`). 4 comment in `~/.ssh/*.pub`.
+Hit: tell user "will use <email>", ask OK. No: ask for another.
+No hit: ask user for email.
+Set `git config --global user.email <email>` if unset or different, after OK.
+
 ## checks
 1 agent: `ssh-add -l` exit 0 or 1 ok. 2: `eval "$(ssh-agent -s)"`, or systemd/keyring for long term. Not sshd.
 
 2 ssh: `ssh -T git@github.com` says "successfully authenticated" as <login>. Other user: wrong key.
-- No keys in `~/.ssh`: user runs `ssh-keygen -t ed25519 -C <email> -f ~/.ssh/id_ed25519_github`, then `ssh-add` it. Show .pub. Tell user add at https://github.com/settings/ssh/new.
-- Keys, no `Host github.com` in `~/.ssh/config`: ask which key. Confirm GitHub name, email (default `git config --global`, or noreply). Show block, ask OK. Back up config, append, `chmod 600`. Set `git config --global user.name|user.email`.
+- No keys in `~/.ssh`: user runs `ssh-keygen -t ed25519 -C <email> -f ~/.ssh/id_ed25519_github`, then `ssh-add` it. Show .pub. Tell user add at https://github.com/settings/ssh/new, then verify again.
+- Keys, no `Host github.com` in `~/.ssh/config`: ask which key. Confirm GitHub name. Show block, ask OK. Back up config, append, `chmod 600`. Set `git config --global user.name`.
   `Host github.com`, `User git`, `IdentityFile <key>`, `IdentitiesOnly yes`, `AddKeysToAgent yes`.
 - Still fails: key not on GitHub. `ssh -vT git@github.com` shows keys offered. Port 22 blocked: `HostName ssh.github.com`, `Port 443`.
 
@@ -36,7 +43,7 @@ None: ask OK, `git remote add origin git@github.com:eibrahim95/fullstack-bootstr
 
 ## report
 Last line, exactly one:
-`ensure-git: done <login>`
+`ensure-git: done <login> <email>`
 `ensure-git: failed <agent|ssh|gh|prereq>: <reason>`
 
 ## never
