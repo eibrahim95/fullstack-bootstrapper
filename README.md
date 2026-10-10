@@ -4,7 +4,7 @@ A local workflow that sets up a machine for AI agents, then bootstraps a full-st
 
 The first pass sets up the development environment: tools, services, and conventions an agent needs to work on a local machine. The second pass creates the app from a registered stack. Stacks are pluggable. New stacks are added to the registry; agents do not invent one-off setups.
 
-Work is split across skills. Skills depend on each other and hand work off when their part is done. Every path starts at `/start`.
+Work is split across skills. Skills depend on each other and hand work off when their part is done. Every path starts at `/setup`.
 
 ## Stacks
 
@@ -20,9 +20,10 @@ Skills are the unit of work. A skill does one job, uses what earlier skills prod
 
 | Skill | Role |
 | --- | --- |
-| `/start` | Entry point. Clarify the goal, pick a stack, then hand off. |
+| `/setup` | Entry point. Installs the tools the machine needs, records progress in `.bootstrap/setup.json`, and resumes where it stopped. Stack selection comes later. |
+| `/ensure-installed` | Checks one CLI tool and installs it if missing. `list` shows the supported tools. Unknown tools get researched, then you pick the method. |
 
-Everyone starts at `/start`, including when the next step is not obvious.
+Everyone starts at `/setup`, including when the next step is not obvious.
 
 ## Attribution
 
