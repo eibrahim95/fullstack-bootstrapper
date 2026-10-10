@@ -19,20 +19,23 @@ Order matters. req = blocks. opt = continues.
 - req  /ensure-installed gcloud
 - req  /ensure-installed terraform
 - req  /ensure-installed npx
+- req  /ensure-git
 
 ## state
 .bootstrap/setup.json:
-{"flow":"setup","steps":[{"id":"git","need":"required","status":"pending","result":null}]}
+{"flow":"setup","github":{"login":null},"steps":[{"id":"git","need":"required","status":"pending","result":null}]}
 status: pending, done, failed, skipped.
+github.login: chosen GitHub account. Set from /ensure-git report. Later skills read it.
 
 ## run
 1. Read state file. Missing: create, all pending.
-2. Sync with steps above. New: pending. Gone: drop.
+2. Sync with steps above. New: pending. Gone: drop. Missing github key: add it, login null.
 3. Walk steps in order. Skip done. Skip opt skipped.
 4. Call step. Read its report line.
-   present, installed: done.
+   present, installed, done: done.
    skipped: skipped. failed: failed.
    Write status + line to file.
+   Step ensure-git done: write <login> from its line to github.login.
 5. Step req and not done: stop.
    Say which, why. Say "run /setup again".
 6. Step opt and not done: go on.
