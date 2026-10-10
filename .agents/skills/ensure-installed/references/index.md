@@ -11,3 +11,4 @@
 | gcloud      | google cloud sdk    | Google Cloud CLI            |
 | terraform   |                     | infra as code               |
 | node        | npx, npm            | js runtime, has npx         |
+| impeccable  |                     | agent skill, UI design      |
