@@ -21,7 +21,6 @@ Skills are the unit of work. A skill does one job, uses what earlier skills prod
 | Skill | Role |
 | --- | --- |
 | `/setup` | Entry point. Installs the tools the machine needs, records progress in `.bootstrap/setup.json`, and resumes where it stopped. Stack selection comes later. |
-| `/ensure-installed` | Checks one CLI tool and installs it if missing. `list` shows the supported tools. Unknown tools get researched, then you pick the method. |
 
 Everyone starts at `/setup`, including when the next step is not obvious.
 
