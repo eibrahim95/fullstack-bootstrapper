@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}} - User Journey</title>
+<style>
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; margin: 0; color: #1f2937; background: #f9fafb; }
+header { padding: 24px 32px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+header h1 { margin: 0 0 4px; font-size: 1.5rem; }
+header .project { font-size: .85rem; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+header .description { color: #4b5563; margin-top: 6px; }
+header .disclaimer { display: inline-block; margin-top: 12px; padding: 4px 10px; background: #fef3c7; color: #92400e; font-size: .8rem; border-radius: 4px; font-weight: 600; }
+header .timestamp { font-size: .75rem; color: #9ca3af; margin-top: 8px; }
+main { padding: 32px; }
+section.graph { display: flex; justify-content: center; overflow-x: auto; }
+svg { max-width: 100%; height: auto; }
+.page-box rect { fill: #fff; stroke: #6366f1; stroke-width: 2; cursor: pointer; transition: fill .15s, stroke .15s; }
+.page-box:hover rect, .page-box:focus rect { fill: #eef2ff; stroke: #4338ca; }
+.page-box text { font-size: 14px; pointer-events: none; }
+.page-title { font-weight: 600; }
+.page-persona { font-size: 11px; fill: #6b7280; }
+.transition-arrow { fill: none; stroke: #9ca3af; stroke-width: 1.5; }
+.transition-label { font-size: 11px; fill: #4b5563; pointer-events: none; paint-order: stroke; stroke: #f9fafb; stroke-width: 4px; }
+.modal[hidden] { display: none; }
+.modal { position: fixed; inset: 0; z-index: 1000; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(17,24,39,.5); }
+.modal-content { position: relative; max-width: 640px; margin: 5vh auto; max-height: 90vh; overflow-y: auto; background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,.2); }
+.modal-head { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
+.modal-head h2 { margin: 0; font-size: 1.25rem; flex: 1; }
+.modal-close { background: none; border: 0; font-size: 1.5rem; cursor: pointer; color: #6b7280; }
+.modal-close:hover { color: #1f2937; }
+.modal-content section { margin-top: 16px; }
+.modal-content h3 { font-size: .9rem; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; margin: 0 0 8px; }
+.modal-content ul { padding-left: 20px; margin: 0; }
+.persona-pill { display: inline-block; padding: 2px 8px; font-size: .75rem; background: #eef2ff; color: #4338ca; border-radius: 999px; }
+.notes { margin-top: 24px; white-space: pre-wrap; color: #4b5563; font-size: .9rem; }
+footer { padding: 24px 32px; font-size: .8rem; color: #6b7280; border-top: 1px solid #e5e7eb; background: #fff; }
+footer code { background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: .85em; }
+{{PERSONA_CSS}}
+</style>
+</head>
+<body>
+<header>
+  <div class="project">{{PROJECT}}</div>
+  <h1>{{TITLE}}</h1>
+  <div class="description">{{DESCRIPTION}}</div>
+  <div class="disclaimer">DRAFT - preview before implementation. Not a production deliverable.</div>
+  <div class="timestamp">Generated {{GENERATED}}</div>
+</header>
+<main>
+  <section class="graph">
+    <svg viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}" role="img" aria-label="User journey graph">
+      <defs><marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#9ca3af"/></marker></defs>
+      {{ARROWS}}
+      {{BOXES}}
+    </svg>
+  </section>
+  <div class="notes">{{NOTES}}</div>
+  {{MODALS}}
+</main>
+<footer>
+  <div>Source: <code>{{SOURCE}}</code></div>
+  <div><a href="index.html">All journeys</a></div>
+</footer>
+<script>
+(function () {
+  var modals = document.querySelectorAll('.modal');
+  function openModal(id) {
+    var m = document.getElementById('modal-' + id);
+    if (!m) return;
+    m.hidden = false;
+    document.body.style.overflow = 'hidden';
+    var c = m.querySelector('.modal-close');
+    if (c) c.focus();
+  }
+  function closeModal(id) {
+    var m = document.getElementById('modal-' + id);
+    if (!m) return;
+    m.hidden = true;
+    document.body.style.overflow = '';
+    var t = document.getElementById('page-' + id);
+    if (t) t.focus();
+  }
+  document.querySelectorAll('.page-box').forEach(function (p) {
+    var id = p.dataset.pageId;
+    p.addEventListener('click', function () { openModal(id); });
+    p.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(id); }
+    });
+  });
+  document.querySelectorAll('[data-close-modal]').forEach(function (el) {
+    el.addEventListener('click', function () { closeModal(el.dataset.closeModal); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') modals.forEach(function (m) { if (!m.hidden) closeModal(m.id.replace(/^modal-/, '')); });
+  });
+})();
+</script>
+</body>
+</html>
