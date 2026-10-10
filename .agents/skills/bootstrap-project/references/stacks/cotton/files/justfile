@@ -1,0 +1,39 @@
+set dotenv-load := false
+
+default:
+    @just --list
+
+# Install python and node deps, vendor JS, build CSS.
+setup:
+    uv sync
+    npm ci
+    just vendor css
+
+# Copy browser libs from node_modules into static/vendor (gitignored).
+vendor:
+    mkdir -p static/vendor/unpoly static/vendor/basecoat
+    cp node_modules/unpoly/unpoly.min.js node_modules/unpoly/unpoly.min.css static/vendor/unpoly/
+    cp node_modules/basecoat-css/dist/js/all.min.js static/vendor/basecoat/
+
+# Build Tailwind + Basecoat into static/css/app.css (gitignored).
+css:
+    npx @tailwindcss/cli -i static/css/input.css -o static/css/app.css --minify
+
+css-watch:
+    npx @tailwindcss/cli -i static/css/input.css -o static/css/app.css --watch
+
+# Build Tetra component JS/CSS (runserver also does this).
+tetra:
+    uv run python manage.py tetrabuild
+
+run: vendor css
+    uv run python manage.py runserver
+
+migrate:
+    uv run python manage.py migrate
+
+check:
+    uv run python manage.py check
+
+test: vendor css tetra
+    uv run python manage.py test

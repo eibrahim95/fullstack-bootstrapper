@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load tetra %}
+{% block content %}
+<c-page-header :title="title" subtitle="Django, django-cotton, django-basecoat, Unpoly, Alpine.js, Tetra, Tailwind CSS." />
+<c-card class="mt-6">
+  <c-card.header>It works</c-card.header>
+  <c-card.section>
+    <div x-data="{ open: false }" class="space-y-4">
+      <c-button @click="open = !open">Toggle (Alpine)</c-button>
+      <p x-show="open" x-cloak>Alpine is live.</p>
+      {% component Counter / %}
+    </div>
+  </c-card.section>
+</c-card>
+{% endblock %}

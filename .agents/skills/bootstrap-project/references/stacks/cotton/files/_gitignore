@@ -1,0 +1,18 @@
+# python
+.venv/
+__pycache__/
+*.pyc
+db.sqlite3
+staticfiles/
+
+# secrets
+.env
+
+# node / built assets
+node_modules/
+static/css/app.css
+static/vendor/
+
+# tetra
+__tetracache__/
+**/static/*/tetra/**
