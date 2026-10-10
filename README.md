@@ -20,9 +20,26 @@ Skills are the unit of work. A skill does one job, uses what earlier skills prod
 
 | Skill | Role |
 | --- | --- |
-| `/setup` | Entry point. Installs the tools the machine needs, records progress in `.bootstrap/setup.json`, and resumes where it stopped. Stack selection comes later. |
+| `/setup` | Entry point. Installs the tools the machine needs, records progress in `.bootstrap/setup.json`, and resumes where it stopped. |
+| `/project` | Runs the project pipeline below for one project, in order, and resumes at the first step not done. |
 
-Everyone starts at `/setup`, including when the next step is not obvious.
+Everyone starts at `/setup`, including when the next step is not obvious. After `/setup`, use `/project`.
+
+## Project pipeline
+
+Each project lives in `.bootstrap/projects/NN/` with a `status.json` state machine. Each skill below does one step, writes its own artifact directory, and advances the state. `/project` calls them in order.
+
+| State reached | Skill | Artifact |
+| --- | --- | --- |
+| `idea-captured` | `/new-project` | `idea/` |
+| `idea-validated` | `/validate-idea` | `validation/` |
+| `spec-created` | `/write-spec` | `spec/` |
+| `journey-drawn` | `/draw-journeys` | `journeys/` |
+| `wireframes-created` | `/draw-wireframes` (optional) | `wireframes/` |
+| `html-prototype-created` | `/build-html-prototype` (optional) | `html-prototype/` |
+| `project-bootstrapped` | `/bootstrap-project` | repo in a parent directory you pick, with the artifacts moved to `artifacts/` beside it |
+
+Support skills: `/ensure-installed <tool>`, `/ensure-mcp <server>`, and the `/ensure-*` skills that `/setup` calls.
 
 ## Attribution
 
