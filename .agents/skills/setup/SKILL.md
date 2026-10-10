@@ -20,6 +20,7 @@ Order matters. req = blocks. opt = continues.
 - req  /ensure-installed terraform
 - req  /ensure-installed npx
 - req  /ensure-git
+- req  /ensure-runnable-docker
 
 ## state
 .bootstrap/setup.json:
