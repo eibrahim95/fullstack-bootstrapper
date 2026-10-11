@@ -26,13 +26,14 @@ Order matters. req = blocks. opt = continues.
 - req  /ensure-postgres
 - req  /ensure-redis
 - opt  /ensure-installed impeccable (only /build-html-prototype needs it)
+- opt  /ensure-installed cookiecutter (needed by /bootstrap-project)
 - opt  /ensure-mcp excalidraw (diagrams, used by draw skills)
 
 ## state
 .bootstrap/setup.json:
 {"flow":"setup","github":{"login":null,"email":null},"gcloud":{"config":null,"project":null},"postgres":{"host":null,"port":null,"username":null,"password":null},"redis":{"host":null,"port":null,"password":null},"steps":[{"id":"git","need":"required","status":"pending","result":null}]}
 status: pending, done, failed, skipped.
-step id = last word of the call: git, npx, ensure-git, impeccable, excalidraw. opt step: need `optional`.
+step id = last word of the call: git, npx, ensure-git, impeccable, cookiecutter, excalidraw. opt step: need `optional`.
 github.login, github.email: chosen GitHub account and commit email. Set from /ensure-git report. Later skills read it.
 gcloud.config, gcloud.project: chosen gcloud config and its project. Set from /ensure-gcloud report. Later skills read them.
 
