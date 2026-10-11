@@ -39,6 +39,8 @@ Each project lives in `.bootstrap/projects/NN/` with a `status.json` state machi
 | `html-prototype-created` | `/build-html-prototype` (optional) | `html-prototype/` |
 | `project-bootstrapped` | `/bootstrap-project` | repo in a parent directory you pick, with the artifacts moved to `artifacts/` beside it |
 
+Steps run in order up to `/draw-wireframes`. `/build-html-prototype` and `/bootstrap-project` both start after that, each in its own background thread started by `/project`, so they run in parallel. A prototype that finishes after bootstrap moves itself into `artifacts/`. Rerun `/project` to see progress.
+
 Support skills: `/ensure-installed <tool>`, `/ensure-mcp <server>`, and the `/ensure-*` skills that `/setup` calls.
 
 ## Attribution

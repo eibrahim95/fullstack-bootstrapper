@@ -12,6 +12,11 @@ Static clickable prototype. Replaces Figma. User opens `OUT/index.html`, clicks 
 Per standard pipeline: arg `NN` or slug; none = the one unbootstrapped project, several = numbered list (id, title, state) and ask; none = say /new-project. Project dir `.bootstrap/projects/NN/`.
 Precondition: step `wireframes` done. Skipped: stop, say run /draw-wireframes NN (needs inventory). Not done: say run /draw-wireframes NN. Same for earlier unfinished steps.
 Own step `html-prototype` done: ask overwrite. No: report skipped. Yes: redo, warn later steps may be stale.
+Own step `running`: another thread owns it. Say so, show `thread` from step, stop. User says that thread is dead: run on.
+Runs in parallel with /bootstrap-project. It needs nothing from bootstrap, and never waits for it.
+
+## inputs
+/project hands this skill to a background thread and puts the answers in the prompt: `models=<implementer>,<reviewer>`, `out=archive|wipe|stop` (only if `OUT` exists). Supplied: use, never ask. Not supplied: ask as below.
 
 Paths, absolute in every subagent brief (subagents share no shell vars):
 | Name | Value |
@@ -33,10 +38,10 @@ Plain HTML. UI and UX good enough for product owner to judge product. No backend
 Inventory decides which screens exist and where each links. Journey disagrees: follow inventory, log in `NOTES.md`. Leave PRD placeholders. Show invented values marked "(sample)", log them.
 
 ## 1 setup (before any subagent)
-1. Ask user for two models: implementer (builds screens), reviewer (reviews). Hardcode no names. Must differ, prefer different families. Same family: say review less independent, proceed only on confirmation. Pick effort per /delegate conventions (`.agents/skills/delegate/references/choose.md`): builders mid, reviewers by risk.
+1. Two models (supplied in call, else ask user): implementer (builds screens), reviewer (reviews). Hardcode no names. Must differ, prefer different families. Same family: say review less independent, proceed only on confirmation. Pick effort per /delegate conventions (`.agents/skills/delegate/references/choose.md`): builders mid, reviewers by risk.
 2. Probe both: one-line probe subagent per model via Agent `model` param. Unavailable: stop, report exact name. Never substitute.
 3. Lead model = your own. Design, build, gate agents run on it. Pass `model` explicitly.
-4. `OUT` exists: ask user: archive to `OUT.prev-<date>`, wipe, or stop.
+4. `OUT` exists: `out=` from call, else ask user: archive to `OUT.prev-<date>`, wipe, or stop. `stop`: report failed.
 5. Read PRD, inventory (md + json), journeys, all of `BRIEF`.
 
 ## you may / may not
@@ -90,7 +95,12 @@ Read `references/integration.md`. Run its Step 6 (link check, ID count, walker, 
 Brief fixes content, links, rules, stack, not design. Silent: decide, be bold and specific. Generic prototype fails. Propose one or two extras PRD does not ask for, mark `EXTRA` in `NOTES.md`. None may break `PRODUCT-RULES.md`.
 
 ## state
-Write only own step in `<project>/status.json`: `html-prototype` status done, path `html-prototype`, result = report line. Top-level `state` = `html-prototype-created`. Failure: step failed, result = report line. User declines the whole step: step skipped, `state` untouched.
+Another thread writes `status.json` at the same time (bootstrap). Never edit it by hand. Only through `S` = `python3 -I .agents/skills/project/scripts/status.py <project> ...`, which locks, re-reads, and recomputes `state`.
+- After 0 checks pass, before 1: `S step html-prototype status=running path=html-prototype`.
+- Done: `S step html-prototype status=done path=html-prototype result="<report line>"`.
+- Failure: `S step html-prototype status=failed result="<report line>"`.
+- User declines whole step: `S step html-prototype status=skipped`.
+- After done: read `artifacts_path` and `repo_path` in `status.json`. Both set = bootstrap already moved the other artifacts. Move this one too: `python3 -I .agents/skills/bootstrap-project/scripts/move-artifacts.py <project> <artifacts_path> <repo_path> --late`. Not set: nothing, bootstrap moves it later.
 
 ## rules
 1. No code from orchestrator. Delegate every script and fix.
