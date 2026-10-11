@@ -3,4 +3,4 @@ One row per stack. Match user input on id or alias. New stack: add row + stack f
 
 | id | aliases | what | file |
 |---|---|---|---|
-| django+unpoly | django, django-cotton, basecoat | Django, django-cotton, Unpoly, Alpine.js, django-basecoat, Tetra, Tailwind CSS | [django_unpoly.md](django_unpoly.md) |
+| django+unpoly | django, django-cotton, basecoat | Django, django-cotton, Unpoly, Alpine.js, django-basecoat, django-unicorn (high-interactivity parts only), Tailwind CSS | [django_unpoly.md](django_unpoly.md) |

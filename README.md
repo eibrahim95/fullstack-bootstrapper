@@ -10,9 +10,9 @@ Work is split across skills. Skills depend on each other and hand work off when 
 
 | Id | Stack |
 | --- | --- |
-| `django+unpoly` | Django, django-cotton, Unpoly, Alpine.js, django-basecoat, Tetra, Tailwind CSS |
+| `django+unpoly` | Django, django-cotton, Unpoly, Alpine.js, django-basecoat, django-unicorn (high-interactivity parts only), Tailwind CSS |
 
-`django+unpoly` is the first registered stack. Django owns the server. django-cotton, Unpoly, Alpine.js, django-basecoat, and Tetra cover server-rendered UI, progressive enhancement, and small client behavior. Tailwind CSS is the styling layer.
+`django+unpoly` is the first registered stack. Django owns the server. django-cotton, Unpoly, Alpine.js, and django-basecoat cover server-rendered UI, progressive enhancement, and small client behavior. django-unicorn is for high-interactivity parts only (live server state, many interdependent fields, polling). Tailwind CSS is the styling layer.
 
 ## Skills
 

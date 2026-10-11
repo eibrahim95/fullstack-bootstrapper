@@ -15,7 +15,7 @@ Step `spec` already `done`: ask overwrite. No: report skipped. Yes: redo, warn l
 
 ## read
 `idea` in `status.json`, `idea/idea.md`, `validation/validation.md`, root `README.md` stack section.
-Target stack is `django+unpoly` (Django, django-cotton, Unpoly, Alpine.js, django-basecoat, Tetra, Tailwind). Spec never picks another stack. Decisions stay at behavior and module level: no file paths, no code.
+Target stack is `django+unpoly` (Django, django-cotton, Unpoly, Alpine.js, django-basecoat, django-unicorn for high-interactivity parts only, Tailwind). Spec never picks another stack. Decisions stay at behavior and module level: no file paths, no code.
 
 ## draft
 Synthesize full draft from what is known. No re-interview for anything already answered (target user, alternative, smallest version, kill criteria, build/buy/rent).

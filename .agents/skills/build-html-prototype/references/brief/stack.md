@@ -1,6 +1,6 @@
 # Stack and build rules (every agent reads this)
 
-The real product uses Basecoat (django-basecoat), Tailwind, Unpoly, Alpine, django-cotton, and a server-side layer (Django, Tetra). A browser cannot run the server parts. The prototype uses the front-end layer and fakes the server layer.
+The real product uses Basecoat (django-basecoat), Tailwind, Unpoly, Alpine, django-cotton, and a server-side layer (Django, django-unicorn for high-interactivity parts only). A browser cannot run the server parts. The prototype uses the front-end layer and fakes the server layer.
 
 | Piece | Real role | Use here |
 |-------|-----------|----------|
@@ -9,7 +9,8 @@ The real product uses Basecoat (django-basecoat), Tailwind, Unpoly, Alpine, djan
 | Unpoly v3 | Navigation without reloads, modals, drawers, partial updates | Use directly. Rules below. |
 | Alpine.js v3 | Small client state: toggles, tabs, drawers, forms | Use for every interactive widget. |
 | django-cotton | Reusable template components | Cannot run. Use the comment convention below. |
-| Django templates and Tetra | Server-rendered pages and state | Cannot run. Use `assets/data.js` and the server markers below. |
+| Django templates | Server-rendered pages and state | Cannot run. Use `assets/data.js` and the server markers below. |
+| django-unicorn | Live server-held state for high-interactivity parts only | Cannot run. Fake with Alpine and the unicorn marker below. |
 
 ## Libraries and fonts
 
@@ -67,6 +68,14 @@ Mark each reusable piece with a comment so a developer can turn it into a Cotton
 ```
 
 Mark each repeated piece. The repeated pieces are the app shell, page header, empty state, banner, progress indicator, and the card for each main entity in the PRD. Repeat the markup in each page. Do not build a runtime include system.
+
+Mark a high-interactivity widget (live server state, many interdependent fields, polling) that would become a django-unicorn component. Fake it with Alpine:
+
+```html
+<!-- unicorn: live-counter  state: count  actions: increment -->
+<div x-data="{ count: 0 }"> … </div>
+<!-- /unicorn -->
+```
 
 ## Server markers
 
