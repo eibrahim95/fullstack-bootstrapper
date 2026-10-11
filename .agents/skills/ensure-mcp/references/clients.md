@@ -44,3 +44,10 @@ Prefer CLI where one exists. CLI edits the file itself: backup first anyway.
 - add: no CLI. Merge key:
   `"context_servers":{"<name>":{"command":"<cmd>","args":[...],"env":{}}}`
   `context_servers` missing: add it. Zed docs: also `url` + `headers` for remote.
+
+## outdated (entry present, env differs)
+Back up config first. Then per client:
+- claude-code: `claude mcp remove --scope user <name>`, then add as above.
+- codex, opencode: CLI `mcp remove <name>` if the client has it (check `--help`), then add as above. Else edit the env key in the file.
+- zed: edit the `env` object of the entry in settings.json. Touch no other key.
+Keep command and args as the server file says. Check again after.

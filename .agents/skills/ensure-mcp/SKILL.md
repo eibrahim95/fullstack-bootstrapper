@@ -14,9 +14,10 @@ Read references/index.md. Print it. Stop.
    Miss: say "not in registry". Report failed. Stop.
 2. Read references/servers/<id>.md. Read references/clients.md.
 3. Per client: run its detect cmd. Not installed: mark skipped, say so.
-4. Per installed client: run its check. Present: mark present.
-5. Nothing missing: report present. Stop.
-6. Missing clients: per client show exact change (CLI cmd, or file + JSON/TOML keys). Ask OK. No OK: that client stays skipped.
+4. Per installed client: run its check. Present, and every `env` pair in server file matches: mark present.
+   Present but env missing or different: mark outdated. Step 6 shows an env-only change.
+5. Nothing missing or outdated: report present. Stop.
+6. Missing or outdated clients: per client show exact change (CLI cmd, or file + JSON/TOML keys). Ask OK. No OK: that client stays skipped.
    Server needs prereq (npx): check on PATH first. Missing: /ensure-installed node.
 7. On OK: back up config (see clients.md), apply. Merge, never overwrite. Config unparsable: stop that client, report failed.
 8. Run check again per edited client. Fail: say why, restore backup.
