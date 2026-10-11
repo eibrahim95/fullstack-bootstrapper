@@ -10,7 +10,7 @@ Static clickable prototype. Replaces Figma. User opens `OUT/index.html`, clicks 
 
 ## 0 project
 Per standard pipeline: arg `NN` or slug; none = the one unbootstrapped project, several = numbered list (id, title, state) and ask; none = say /new-project. Project dir `.bootstrap/projects/NN/`.
-Precondition: step `wireframes` done. Skipped: stop, say run /draw-wireframes NN (needs inventory). Not done: say run /draw-wireframes NN. Same for earlier unfinished steps.
+Precondition: step `wireframes` done (done = user approved, see /draw-wireframes). Prototype is the translation of those wireframes. Skipped: stop, say run /draw-wireframes NN (needs inventory). Not done: say run /draw-wireframes NN. Same for earlier unfinished steps.
 Own step `html-prototype` done: ask overwrite. No: report skipped. Yes: redo, warn later steps may be stale.
 Own step `running`: another thread owns it. Say so, show `thread` from step, stop. User says that thread is dead: run on.
 Runs in parallel with /bootstrap-project. It needs nothing from bootstrap, and never waits for it.
