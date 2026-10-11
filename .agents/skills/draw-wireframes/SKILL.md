@@ -52,8 +52,9 @@ Excalidraw:
 2. `python3 -I .agents/skills/draw-wireframes/scripts/gen_excalidraw.py --inventory <dir>/screen-inventory.json --out <dir>/wireframes.excalidraw --title "<title>" --origin-x X --origin-y Y`
 3. `import_scene` (mode merge, filePath). Server reads only its allowed dir: copy file there, import, delete copy. Never inline hundreds of elements.
 4. `get_canvas_screenshot`, save `overview.png`. Check crop: text fits, tags show, no overlap.
-Mermaid: `python3 -I .agents/skills/draw-wireframes/scripts/gen_mermaid.py --inventory <dir>/screen-inventory.json --out-dir <dir>/mermaid --title "<title>"` -> `index.md` + one md per section.
+Mermaid: `python3 -I .agents/skills/draw-wireframes/scripts/gen_mermaid.py --inventory <dir>/screen-inventory.json --out <dir>/wireframes.md --title "<title>"` -> ONE md file: contents, then per section a flow diagram and every screen.
 Structural wireframes, not page layout. Say so.
+One artifact only: ALL screens in one Excalidraw scene (`wireframes.excalidraw`, one canvas) or in one md file (`wireframes.md`). Never one file per screen or section.
 
 ## verify
 - rendered screen count = inventory count
@@ -63,7 +64,7 @@ Render not viewed: say so, not "checked".
 
 ## approve
 /build-html-prototype translates these wireframes into HTML. Unapproved wireframes must not feed it. Step is `done` only after user approves.
-1. Show: unique screen count, per-journey counts, debatable splits (with fallback each), flagged gaps, where to look (canvas, or `wireframes/mermaid/index.md`).
+1. Show: unique screen count, per-journey counts, debatable splits (with fallback each), flagged gaps, where to look (canvas, or `wireframes/wireframes.md`).
 2. Ask: `Approve wireframes? (y, or say what to change)`.
 3. Changes: add, drop, merge, split, rename screens, resolve a gap, change regions. Edit `screen-inventory.json` and `.md` only, never `spec/` or `journeys/` (spec wrong: say run /write-spec NN). Re-render, verify again, show the delta, ask again.
    Excalidraw re-render: new copy past the right edge of the old one (generator ids are not stable, never delete elements you cannot identify). Tell user the older copy is superseded. Mermaid: files overwritten.

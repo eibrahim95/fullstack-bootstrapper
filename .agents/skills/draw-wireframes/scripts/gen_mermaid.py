@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """Source: adapted from apexyard /wireframes (MIT).
-Render a screen inventory as Mermaid wireframes in Markdown files (no Excalidraw needed).
+Render a screen inventory as Mermaid wireframes in ONE Markdown file (no Excalidraw needed).
 
 Usage:
-  gen_mermaid.py --inventory screen-inventory.json --out-dir wireframes/ [--title "..."]
+  gen_mermaid.py --inventory screen-inventory.json --out wireframes/wireframes.md [--title "..."]
 
-Writes <out-dir>/index.md plus one <section>.md per section. Each section file holds one
-flow diagram (screens and the transitions between them) and one wireframe diagram per
-screen (regions stacked in a subgraph, variants in a dashed note). Same inventory format
-as gen_excalidraw.py.
+Writes a single file: contents list, then per section one flow diagram (screens and the
+transitions between them) and one wireframe diagram per screen (regions stacked in a
+subgraph, variants in a dashed note). Same inventory format as gen_excalidraw.py.
 """
 import argparse, json, os, re, sys
 
@@ -91,7 +90,7 @@ def tag(s):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--inventory", required=True)
-    ap.add_argument("--out-dir", required=True)
+    ap.add_argument("--out", required=True, help="one Markdown file holding every screen")
     ap.add_argument("--title", default=None)
     a = ap.parse_args()
     data = json.load(open(a.inventory))
@@ -99,25 +98,25 @@ def main():
     title = a.title or (data.get("title") if isinstance(data, dict) else None) or "Screen wireframes"
     by_id = {s["id"]: s for s in screens}
     sections = (data.get("sections") if isinstance(data, dict) else None) or derive_sections(screens)
-    os.makedirs(a.out_dir, exist_ok=True)
-    index = [f"# {title}", "", f"{len(screens)} unique screens. Low-fidelity wireframes in Mermaid: structure and content, not visual design.",
-             "Legend: blue = button or action, dashed white = input or control, yellow = note or banner, gray = content block.", "",
-             "| Section | Screens | File |", "|---|---|---|"]
+    doc = [f"# {title}", "", f"{len(screens)} unique screens. Low-fidelity wireframes in Mermaid: structure and content, not visual design.",
+           "Legend: blue = button or action, dashed white = input or control, yellow = note or banner, gray = content block.", "",
+           "## Contents", ""]
     for sec in sections:
-        fname = f"{mid(sec['key']).lower()}.md"
-        index.append(f"| {sec['title']} | {len(sec['ids'])} | [{fname}]({fname}) |")
-        body = [f"# {sec['title']}", ""]
+        doc.append(f"- {sec['title']}: {len(sec['ids'])} screens")
+    doc.append("")
+    for sec in sections:
+        doc += [f"## {sec['title']}", ""]
         if sec.get("subtitle"):
-            body += [sec["subtitle"], ""]
-        body += ["## Flow", "", flow_block(sec, by_id), ""]
+            doc += [sec["subtitle"], ""]
+        doc += ["### Flow", "", flow_block(sec, by_id), ""]
         for k in sec["ids"]:
             s = by_id[k]
-            body += [f"## {s['name']} (`{k}`){tag(s)}", "",
-                     f"Platform: {s.get('platform', 'both')}. Kind: {s.get('kind', 'primary')}.", "", screen_block(s), "",
-                     f"From: {', '.join(s.get('entry_from', [])) or 'none'}. To: {', '.join(s.get('exit_to', [])) or 'none'}.", ""]
-        open(os.path.join(a.out_dir, fname), "w").write("\n".join(body))
-    open(os.path.join(a.out_dir, "index.md"), "w").write("\n".join(index) + "\n")
-    print(f"screens={len(screens)} sections={len(sections)} out_dir={a.out_dir}")
+            doc += [f"### {s['name']} (`{k}`){tag(s)}", "",
+                    f"Platform: {s.get('platform', 'both')}. Kind: {s.get('kind', 'primary')}.", "", screen_block(s), "",
+                    f"From: {', '.join(s.get('entry_from', [])) or 'none'}. To: {', '.join(s.get('exit_to', [])) or 'none'}.", ""]
+    os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
+    open(a.out, "w").write("\n".join(doc))
+    print(f"screens={len(screens)} sections={len(sections)} out={a.out}")
 
 
 if __name__ == "__main__":
