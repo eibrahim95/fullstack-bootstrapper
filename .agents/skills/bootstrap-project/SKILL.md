@@ -28,7 +28,7 @@ Parent rule: not exist -> will create. Exists and empty dir -> use. Anything els
 Resume (`repo_path` set, step 1): skip this rule.
 
 ## 3 plan
-Read stack file `references/stacks/<id>.md`. Show:
+Read stack file the file named in the registry row (`references/stacks/`). Show:
 - Parent dir: created now, or empty and reused.
 - `$R` tree from the stack's files list, pinned versions, commands to run.
 - DB name `<slug>` on `$SJ` postgres host:port user.

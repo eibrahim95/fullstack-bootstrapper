@@ -1,4 +1,4 @@
-# stack: cotton
+# stack: django+unpoly
 Django + django-cotton + django-basecoat + Unpoly + Alpine.js + Tetra + Tailwind CSS v4.
 Server owns the page. Unpoly swaps fragments. Alpine for local state. Tetra only for server-backed widgets.
 Needs: uv, just, node/npm (all from /setup). Network for PyPI and npm.
@@ -41,7 +41,7 @@ Run in order. Any non-zero exit: stop, scaffold failed.
 2. `uv init --bare --name <slug> --python 3.13 --vcs none`
 3. `uv add "django==6.1.2" "django-cotton==2.7.2" "django-basecoat==0.2.0" "tetra==0.8.5" "channels==4.3.2" "unpoly==3.2.0" "psycopg[binary]==3.3.6" "redis==8.1.0" "python-dotenv==1.2.4"`
 4. `uv run django-admin startproject config .` then `uv run python manage.py startapp core`
-5. `python3 -I $S/scripts/render.py $S/references/stacks/cotton/files $R <slug> "<title>" "<one_liner>"`
+5. `python3 -I $S/scripts/render.py $S/references/stacks/django_unpoly/files $R <slug> "<title>" "<one_liner>"`
    Overwrites `config/settings.py`, `config/urls.py`, `core/views.py`, `core/tests.py`; adds the rest of `files/`.
 6. `npm install --no-audit --no-fund` (writes package-lock.json from pins in package.json)
 7. `python3 -I $S/scripts/write-env.py <repo-root>/.bootstrap/setup.json $R <slug>`
