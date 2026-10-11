@@ -12,7 +12,8 @@ Source: apexyard `walking-skeleton-django` (MIT): plan before build, prove the s
 ## 1 pick
 Contract: arg `NN` or slug. No arg: one project not bootstrapped -> use it. Several -> list id, title, state, ask. None -> run /new-project.
 Precondition: wireframes `done`; or wireframes `skipped` and journeys `done`. Else stop: `run /<skill> NN`, report failed prereq. html-prototype may be in any status: it runs in parallel, never wait for it.
-`$SJ` needs `postgres`, `github`. Missing: say run /setup, report failed prereq.
+`$SJ` needs `postgres`, `redis`, `github`. Missing: say run /setup, report failed prereq.
+`command -v cookiecutter` empty: say run `/ensure-installed cookiecutter`, report failed prereq.
 Bootstrap `done`: report skipped, say `repo_path` and `artifacts_path`. Never redo.
 Bootstrap `running`: another thread owns it. Say so, show `thread`, stop. User says that thread is dead: run on (resume rule below).
 After checks pass: `P step bootstrap status=running path=null`.
@@ -28,19 +29,21 @@ Parent rule: not exist -> will create. Exists and empty dir -> use. Anything els
 Resume (`repo_path` set, step 1): skip this rule.
 
 ## 3 plan
-Read stack file the file named in the registry row (`references/stacks/`). Show:
+Read stack file named in the registry row (`references/stacks/`). Show:
 - Parent dir: created now, or empty and reused.
-- `$R` tree from the stack's files list, pinned versions, commands to run.
-- DB name `<slug>` on `$SJ` postgres host:port user.
+- cookiecutter answers from stack `source`, filled in.
+- Goal list from stack `goals`, one line each.
+- DB name (stack `db`) on `$SJ` postgres host:port user.
 - Artifact dirs that will move to `$A` after first commit.
 Ask `Create? (y/n)`, or `approved=yes` in call. No: report skipped. Nothing written before yes.
 
 ## 4 scaffold
-Follow stack file `scaffold` section exactly, in order. Each step done when its stated output shows.
-Fail: step failed `bootstrap-project: failed scaffold: <step> <reason>`. Artifacts unmoved. Offer to delete what this run made (`$R`, and `<parent>` if this run created it); rerun needs a parent that passes the rule.
+Run stack `source` cookiecutter command, output lands at `$R`. Then reach every stack goal. How = your call; stack `hints` save time, re-check them.
+Run each goal's verify. Fix, rerun, until all pass. Same goal fails 3 attempts: stop.
+Fail: step failed `bootstrap-project: failed scaffold: <goal> <reason>`. Artifacts unmoved. Offer to delete what this run made (`$R`, and `<parent>` if this run created it); rerun needs a parent that passes the rule.
 
 ## 5 db
-Ask `Create database "<slug>" on <host>:<port> as <user>? (y/n)`, or `db=` in call.
+Ask `Create database "<db name>" on <host>:<port> as <user>? (y/n)`, or `db=` in call.
 Yes: stack file `db` section. Exists already: ask reuse or stop. Then migrate and test per stack file.
 Fail: `bootstrap-project: failed db: <reason>`. Repo stays, artifacts unmoved.
 No: skip, say the db commands for later. Report gets `db-skipped`.

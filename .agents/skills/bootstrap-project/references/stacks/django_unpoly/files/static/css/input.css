@@ -1,9 +1,0 @@
-@import "tailwindcss";
-@import "basecoat-css";
-
-/* django-basecoat component templates live in the venv, which Tailwind auto-detection skips. */
-@source "../../.venv/lib/*/site-packages/django_basecoat/templates";
-
-/* Project tokens go here (seed from the prototype's DESIGN.md / assets later). */
-@theme {
-}
