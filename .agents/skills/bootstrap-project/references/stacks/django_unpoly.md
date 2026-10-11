@@ -24,7 +24,7 @@ End state. How = agent's call. Run in `$R`. Before db exists prefix tests with `
 2. npm deps tailwindcss, @tailwindcss/cli, basecoat-css, unpoly, esbuild in package.json + package-lock.json. verify: `npm ls --depth=0` lists 5, no errors
 3. Apps + middleware wired, `__tetra__/` routed. verify: `uv run python manage.py shell -c "from django.conf import settings as s; print(all(a in s.INSTALLED_APPS for a in ['tetra','django_cotton','django_basecoat']), [m for m in s.MIDDLEWARE if 'npoly' in m or 'etra' in m])"` -> True + both
 4. Base layout: built Tailwind css, Unpoly JS+CSS, Basecoat JS, Tetra styles/scripts with Alpine (one Alpine only), `up-main`, Unpoly sends CSRF. verify: `just run`; every `/static/` css/js linked from `curl -s localhost:8000/` returns 200
-5. Home `/` renders through a project cotton component, a django-basecoat component, a Tetra component. verify: a test asserts all three markers
+5. Home `/` renders through a project cotton component, a django-basecoat component, a Tetra component. verify: a test asserts all three markers; a test POSTs a Tetra public method to `__tetra__/` -> 200, new state
 6. Unpoly server protocol live. verify: `curl -s -D- -o/dev/null -H 'X-Up-Version: 3' -H 'X-Up-Target: main' localhost:8000/ | grep -i x-up-method`
 7. Tailwind v4 build output has classes from django-basecoat templates and basecoat-css. verify: `just css`, then built css has `animate-spin` (from `<c-spinner>`) and `.btn-outline`
 8. Settings read DB + Redis from env, `.env` loaded by default, real env wins. Host, port, user match `$SJ`, db name `<pkg>`. Empty DB var -> sqlite, empty redis host -> in-memory. verify: `uv run python manage.py shell -c "from django.conf import settings as s; from urllib.parse import urlsplit as u; d=s.DATABASES['default']; r=u(s.CACHES['default']['LOCATION']); print(d['HOST'], d['PORT'], d['USER'], d['NAME'], r.hostname, r.port)"` vs `jq '.postgres.host,.postgres.port,.postgres.username,.redis.host,.redis.port' $SJ`
@@ -34,6 +34,14 @@ End state. How = agent's call. Run in `$R`. Before db exists prefix tests with `
 12. justfile has run, test, migrate (+ setup, css). `just test` builds what tests need. verify: `just --summary`; `POSTGRES_DB= REDIS_HOST= just test` -> all passed
 13. AGENTS.md: stack, commands, layout, component ladder. README.md: title, one_liner, run steps. verify: `grep -nE '\.bootstrap|artifacts' AGENTS.md README.md` empty
 14. No unused template leftovers (docs/sphinx, readthedocs, utility/, docker, celery, Bootstrap CSS, crispy). verify: `ls docs utility .readthedocs.yml docker-compose*.yml 2>/dev/null` empty; `grep -rliE 'bootstrap5|bootstrap\.min|crispy|celery' --exclude-dir=.venv --exclude-dir=node_modules .` empty
+15. Lint + types gate: pre-commit hooks installed, every hook passes, no hooks for removed parts. verify: `git init -q -b main && git add -A && uv run pre-commit install && uv run pre-commit run --all-files` exit 0 (rerun once after autofix); `uv run mypy <pkg>` -> no issues
+16. Coverage: `just test` runs pytest under coverage + report, `fail_under = 80` in pyproject. Reached by real tests (pages, components, settings), `omit` only migrations + tests. verify: `POSTGRES_DB= REDIS_HOST= just test` TOTAL >= 80; `uv run coverage report --fail-under=100` exits non-zero
+17. Dark mode light/dark/system: `<html data-theme>` set by inline `<head>` script before first stylesheet (no flash), choice in localStorage via Alpine store, Tailwind `dark:` follows `data-theme`, Basecoat dark palette follows too, toggle component on every page. verify: test asserts script before stylesheet + 3 choices; built css has `where([data-theme=dark]` and no `:is(.dark *)`
+18. Unpoly/Alpine glue: `app.js` loads `defer` before Alpine, registers stores in `alpine:init`, `Alpine.initTree` on `up:fragment:inserted`, page scripts via `up.compiler()` returning cleanup. Modal page opened by `up-href` + `up-layer="new"`, full document with `<main up-main>`. verify: test asserts app.js before alpinejs, `up-layer="new"` on home, modal URL 200; headless Chrome if present: Alpine + Tetra react inside an Unpoly-swapped `main` and inside the modal. No browser: say not verified
+19. AGENTS.md also: component ladder basecoat -> cotton -> alpine -> tetra, every django-basecoat component (from the package `templates/cotton/`, not memory), Unpoly/Alpine/theme rules, `@theme` tokens named by function, rules: no hand-written migrations, no `# noqa`, no narrating comments, lint + test before commit. verify: each `ls <site-packages>/django_basecoat/templates/cotton/*.html` name (`_` -> `-`) greps in AGENTS.md; `grep -ciE 'migrations by hand|noqa|narrate|lint' AGENTS.md` >= 4; 13 still empty
+20. Templates: `cotton/ layouts/ partials/ pages/` (+ error pages, app overrides), no root `base.html`. Pages render. verify: `just run`; `/`, `/about/`, each project page -> 200, `grep -cE '\{\{|\{%|<c-[a-z]|TemplateSyntaxError'` = 0
+21. Hygiene: no `ATOMIC_REQUESTS`, python-slugify gone, `.venv` built at `$R`, deploy check clean. verify: `grep -r ATOMIC_REQUESTS config` + `grep slugify pyproject.toml` empty; `head -1 .venv/bin/pytest` starts `#!$R/.venv/`; `env -i PATH=$PATH HOME=$HOME DJANGO_READ_DOT_ENV_FILE=False DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_SECRET_KEY=<random 50> DJANGO_ADMIN_URL=x/ uv run python manage.py check --deploy` -> no issues
+22. `just superuser` = `createsuperuser --noinput` from `.env` `DJANGO_SUPERUSER_EMAIL` (= `<email>`) + generated `DJANGO_SUPERUSER_PASSWORD` (keys in `.env.example`). Never printed, not run by bootstrap. verify: `grep -c '^DJANGO_SUPERUSER_\(EMAIL\|PASSWORD\)=.' .env` = 2; on throwaway sqlite (`POSTGRES_DB= REDIS_HOST= just migrate superuser`, then `rm db.sqlite3`) output `grep -cFf <(sed -n 's/^DJANGO_SUPERUSER_PASSWORD=//p' .env)` = 0
 
 ## hints
 All verified 2026-10-11 (cookiecutter-django 4b9d477, Python 3.14), may be stale, re-check.
@@ -41,13 +49,26 @@ All verified 2026-10-11 (cookiecutter-django 4b9d477, Python 3.14), may be stale
 - tetra imports channels, does not declare it. Needs `TETRA_ESBUILD_PATH` = `node_modules/.bin/esbuild`.
 - `local.py` puts `whitenoise.runserver_nostatic` first; tetra overrides runserver too -> RecursionError on `runserver`. tetra must come before it.
 - basecoat-css 1.x default bundle lacks 0.x classes django-basecoat 0.2.0 emits (`btn-outline`, `alert-destructive`). 0.3.x works. 1.x `basecoat-css/compat` export untested.
-- Tailwind skips gitignored `.venv`: needs `@source` to django_basecoat templates. Glob `lib/*/site-packages` matched nothing; literal `lib/python3.14/site-packages` worked.
+- Tailwind skips gitignored `.venv`: needs `@source` to django_basecoat templates. Glob `lib/*/site-packages` matched nothing; literal `lib/python3.X/site-packages` works, X = venv python.
 - `tetrabuild` before tests.
 - Template `base.py` reads `.env` only if `DJANGO_READ_DOT_ENV_FILE`, has no sqlite fallback, `.gitignore` lacks `.env`.
 - sites migration 0003 runs postgres-only sequence SQL: sqlite tests fail until guarded on `connection.vendor`.
 - Template ships Bootstrap CDN in `base.html`, crispy in allauth element templates + user form: restyle with Basecoat.
 - pytest-django: home test needs `django_db` mark (session, allauth).
-- Template pins `requires-python ==3.14.*`; post-gen hook runs `uv` (downloads python, locks). Run ~20s.
+- Template pins `requires-python ==3.14.*`; post-gen hook runs `uv` (downloads python, locks, no `.venv`). Run ~10-20s.
+Added 2026-10-11 (same template, tetra 0.8.5, basecoat-css 0.3.11, unpoly 3.14.3, Alpine 3.15.4 from tetra), may be stale, re-check:
+- Python 3.14 dropped instance `__annotations__`; tetra 0.8.5 + 0.9.2 `from_state` reads it: page renders, every Tetra method call 500. Use 3.13: `.python-version`, `requires-python`, mypy `python_version`, pre-commit `default_language_version`.
+- pre-commit `--all-files` sees only files git knows: `git add -A` first. djlint + ruff-format rewrite on first run. Ruff in tests: `HTTPStatus.OK` (PLR2004), generated secrets (S106), `tetra.state.encode_component` (SLF001). Template's own `# noqa` lines stay.
+- Basecoat 0.3 dark = `.dark` class + `@custom-variant dark (&:is(.dark *))`. Own `@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *))` after `@import "basecoat-css"` wins, also in Basecoat's `@apply dark:`. Token block stays on `.dark`: theme script sets `data-theme` and `.dark`.
+- Unpoly 3 modal box is element `up-modal-box`, not a class; unpoly.css paints it white: link unpoly css before app.css, style `up-modal-box`.
+- Tetra Alpine is `defer`red, auto-inits inserted nodes, `_x_marker` blocks double init: `initTree` on `up:fragment:inserted` harmless. Headless Chrome (puppeteer-core outside repo) proved Alpine + Tetra live after swap and in modal.
+- Cotton in tests: `engines["django"].from_string('{% load cotton %}{% cotton name a="b" %}{% endcotton %}')`. `<c-x>` in from_string not compiled; `django_cotton.utils.render_component` crashes with template debug on.
+- Tetra round trip in test: `Counter(client.get("/").wsgi_request)`, POST `{"protocol":"tetra-1.0","payload":{"encrypted_state":encode_component(c),"state":{...},"children_state":[],"args":[]}}` as JSON.
+- Settings tests: `importlib.reload(config.settings.base)` with `DJANGO_READ_DOT_ENV_FILE=False`, reload again on teardown.
+- `.env` read puts keys in `os.environ`: `DJANGO_SUPERUSER_*` breaks template `test_createsuperuser_command`. Autouse conftest fixture `delenv`s them.
+- `.venv` made before `mv`: scripts keep old shebang, `uv run pytest` silently runs another pytest from PATH. Plain `uv sync` keeps them; `uv sync --reinstall` fixes.
+- `check --deploy`: needs only `DJANGO_SECRET_KEY`, `DJANGO_ADMIN_URL` (allowed hosts default example.com).
+- No `unpoly_mixins.py`: only TemplateView pages, `unpoly` middleware covers protocol. Add with first form/overlay view.
 
 ## versions
 Current compatible releases. Pin only where a hint says a version is bad. Resolved versions live in `uv.lock`, `package-lock.json`.

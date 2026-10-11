@@ -39,7 +39,7 @@ Ask `Create? (y/n)`, or `approved=yes` in call. No: report skipped. Nothing writ
 
 ## 4 scaffold
 Run stack `source` cookiecutter command, output lands at `$R`. Then reach every stack goal. How = your call; stack `hints` save time, re-check them.
-Run each goal's verify. Fix, rerun, until all pass. Same goal fails 3 attempts: stop.
+Run each goal's verify. Fix, rerun, until all pass. Same goal fails 3 attempts: stop. Keep each goal's result for 8.
 Fail: step failed `bootstrap-project: failed scaffold: <goal> <reason>`. Artifacts unmoved. Offer to delete what this run made (`$R`, and `<parent>` if this run created it); rerun needs a parent that passes the rule.
 
 ## 5 db
@@ -66,6 +66,7 @@ Other non-zero: `bootstrap-project: failed move: <stderr>`, step failed.
 
 ## 8 report
 Say: `cd $R && just run`. Artifacts in `$A`. Status in `.bootstrap/projects/NN/status.json`.
+Then `verified:` list, one line per stack goal: `<n> <short name>: verified` or `<n> <short name>: not verified (<why>)`. Goal whose verify did not run, or ran only partly (no browser, db skipped): not verified. Never pass silently.
 Last line, exactly one:
 `bootstrap-project: done NN <repo_path>` (append ` db-skipped` if 5 skipped)
 `bootstrap-project: failed <scaffold|db|git|move|prereq>: <reason>`
