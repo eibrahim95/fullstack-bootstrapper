@@ -85,7 +85,7 @@ Exit 3 collision (only after an interrupted move, or user edits in `$A`): nothin
 Other non-zero: `bootstrap-project: failed move: <stderr>`, step failed.
 
 ## 10 report
-Say: `cd $R && just run` (websockets: `just asgi`; background: `just worker`, `just beat`; styles: `just css-watch`). GitHub: `github_url`. Artifacts in `$A`. Status in `.bootstrap/projects/NN/status.json`.
+Say: `cd $R && just run` (websockets: `just asgi` on 8001; background: `just worker`, `just beat`; styles: `just css-watch`). GitHub: `github_url`. Artifacts in `$A`. Status in `.bootstrap/projects/NN/status.json`.
 Then `verified:` list, one line per stack goal: `<n> <short name>: verified` or `<n> <short name>: not verified (<why>)`. Goal whose verify did not run, or ran only partly (no browser, db skipped): not verified. Never pass silently.
 Last line, exactly one:
 `bootstrap-project: done NN <repo_path>` (append ` db-skipped` if 5 skipped, ` not-pushed` if 8 did not push)
