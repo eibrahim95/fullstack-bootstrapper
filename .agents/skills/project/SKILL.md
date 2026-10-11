@@ -51,10 +51,10 @@ Both threads start together. Collect every answer first, so threads never wait o
 2. wireframes `skipped`: html-prototype needs the inventory. `P step html-prototype status=skipped result="project: skipped NN (no wireframes)"`, say why.
 3. Ask one round, recommended answers, only for steps to launch:
    html-prototype: do it or skip? Implementer model, reviewer model (different, per `.agents/skills/delegate/references/choose.md`). If `html-prototype/` exists in project dir: archive, wipe, or stop.
-   bootstrap: parent dir (recommend `~/Projects/<slug>`, must be missing or empty), slug (recommend status.json `slug`), stack (one stack: say it), create database `<slug>` on setup.json postgres (y/n), then ask `approved`: show what thread will create (repo dir, artifacts dir, stack, db) and ask OK.
+   bootstrap: parent dir (recommend `~/Projects/<slug>`, must be missing or empty), slug (recommend status.json `slug`), stack (one stack: say it), every stack file `inputs` row (read `.agents/skills/bootstrap-project/references/stacks/`, recommended answer each, no-default rows must be answered), create database `<slug>` on setup.json postgres (y/n), then ask `approved`: show what thread will create (repo dir, artifacts dir, stack, db) and ask OK.
    Check parent rule here. Violation: ask again.
 4. Call /handover once per launched step, one after the other, before replying. Handover prompt stands alone:
-   repo dir; project NN and title; exact call `/build-html-prototype NN models=<impl>,<rev> out=<choice>` or `/bootstrap-project NN parent=<p> slug=<s> stack=<id> db=<yes|no> approved=yes`; answers are final, no user watching, never ask, missing input = report failed; the other step runs in a parallel thread and shares status.json, so write only through the skill; finish with the skill's report line. No passwords in prompt.
+   repo dir; project NN and title; exact call `/build-html-prototype NN models=<impl>,<rev> out=<choice>` or `/bootstrap-project NN parent=<p> slug=<s> stack=<id> <input>=<answer>... db=<yes|no> approved=yes` (quote answers with spaces); answers are final, no user watching, never ask, missing input = report failed; the other step runs in a parallel thread and shares status.json, so write only through the skill; finish with the skill's report line. No passwords in prompt.
    Keep returned name/id. `P step <id> thread="<name> <id>"`.
 5. Draw progress. Then say, last in reply: both threads running, how to watch (from /handover output), `run /project NN again to see progress`. Stop. Do not poll.
 
