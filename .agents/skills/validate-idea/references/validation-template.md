@@ -4,22 +4,37 @@
 **Verdict**: **{GREEN | YELLOW | RED}** - {one-sentence reason}
 
 ## Starting context
-{3-5 lines}
+{3-5 lines: idea as it was when validation began}
 
-## Q1. Target user
-{answer + probe response}
+## Answers
+- Target user: {answer + probe}
+- Current alternative: {answer}
+- Smallest version: {answer}
+- Kill criteria: {answer; note if hard to articulate}
+- Build / buy / rent: {answer + probe}
 
-## Q2. Current alternative
-{answer}
+## Challenge
+{final contrarian output, verbatim. Earlier rounds: one line each with verdict and date.}
 
-## Q3. Smallest version
-{answer}
+## Objections
+| id | severity | objection | outcome | how |
+|---|---|---|---|---|
+| O1 | showstopper | ... | fixed / cut / evidence / accepted / open | concrete change, check, or user reason |
 
-## Q4. Kill criteria
-{answer; note if hard to articulate}
+## Decisions
+{every change made while grilling: what changed, why. Spec reads this.}
+- Added: ...
+- Cut: ...
+- Changed: ...
 
-## Q5. Build / buy / rent
-{answer + probe}
+## Revisions to idea
+{field: old -> new, for each idea field amended. None: "none".}
+
+## Accepted risks
+{objection id, risk, user's reason. None: "none".}
+
+## Open assumptions
+{assumption, how to check, by when. Spec turns these into Open Questions.}
 
 ## Read-out
 {2-4 sentences: what stood out, strong, weak}

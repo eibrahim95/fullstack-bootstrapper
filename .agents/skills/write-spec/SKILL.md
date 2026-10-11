@@ -21,6 +21,7 @@ Target stack is `cotton` (Django, django-cotton, Unpoly, Alpine.js, django-basec
 Synthesize full draft from what is known. No re-interview for anything already answered (target user, alternative, smallest version, kill criteria, build/buy/rent).
 Template: [references/spec-template.md](references/spec-template.md). Unknown value: `TBD`, never invent.
 Seed from validation: smallest version -> P0 scope; kill criteria -> lagging metrics; current alternative -> problem framing.
+Also from validation.md: `Decisions` (added, cut, changed) are binding; cuts go to Non-Goals. `Accepted risks` -> Further Notes. `Open assumptions` -> Open Questions with their check. Read `idea` fields from status.json: validation may have amended them.
 
 ## gaps
 ONE round. Single message, numbered. Each question has a recommended answer, phrased so "yes" accepts. Ask only what draft cannot fill:
