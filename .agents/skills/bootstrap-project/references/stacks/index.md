@@ -1,5 +1,5 @@
 # Stack registry
-One row per stack. Match user input on id or alias. New stack: add row + stack file (`source`, `goals`, `hints`, `versions`, `db`), file names use `_` not `+`. No template files: agent generates from `source`, adapts to `goals`. Never improvise a stack not listed.
+One row per stack. Match user input on id or alias. New stack: add a row and a stack file with sections Inputs, Source, Goals, Hints, Versions, Database. File names use `_`, not `+`. No template files: the agent generates from Source and adapts until Goals pass. Never improvise a stack not listed.
 
 | id | aliases | what | file |
 |---|---|---|---|
