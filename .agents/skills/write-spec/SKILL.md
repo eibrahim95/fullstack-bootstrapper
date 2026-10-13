@@ -1,55 +1,50 @@
-# {Title} - Spec
+---
+name: write-spec
+description: Write product spec from idea and validation, one round of gap questions. Use after /validate-idea. Writes spec/spec.md, sets spec step.
+---
+# write-spec
 
-## Problem Statement
-Problem from the user's perspective. Who, when, cost of today's alternative.
+Synthesize first, ask only gaps.
 
-## Solution
-Solution from the user's perspective. Smallest version first.
+## project
+Arg `NN` (or slug). No arg: one project not bootstrapped -> use it; several -> numbered list (id, title, state), ask; none -> say run /new-project.
+Dir: `.bootstrap/projects/NN/`. Missing id: error.
+Precondition: step `validation` is `done` (GREEN, YELLOW proceed, or RED overridden; result tells). Else stop: "run /validate-idea NN". Failed RED: also mention `override`.
+Step `spec` already `done`: ask overwrite. No: report skipped. Yes: redo, warn later steps may be stale.
 
-## Goals
-3-5 measurable outcomes.
+## read
+`idea` in `status.json`, `idea/idea.md`, `validation/validation.md`, root `README.md` stack section.
+Target stack is `django+unpoly` (Django, django-cotton, Unpoly, Alpine.js, django-basecoat, django-unicorn for high-interactivity parts only, Tailwind). Spec never picks another stack. Decisions stay at behavior and module level: no file paths, no code.
 
-## Non-Goals
-3-5 things deliberately not done.
+## draft
+Synthesize the whole product from what is known. No re-interview for anything already answered (target user, alternative, whole product, risks, kill criteria, build/buy/rent).
+Template: [references/spec-template.md](references/spec-template.md). Unknown value: `TBD`, never invent.
+Seed from validation: current alternative -> problem framing. `Decisions` added and changed are in the product. Cuts (what the user removed) go to Non-Goals. Kill criteria and any smallest demo go under Further Notes, Validation notes. `Accepted risks` -> Further Notes. `Open assumptions` -> Open Questions with their check. Read `idea` fields from status.json: validation may have amended them.
 
-## User Stories
-LONG numbered list, extensive, all aspects. Format:
-`N. As a <actor>, I want <feature>, so that <benefit>`
-Group by flow (one flow = one future journey). Number continuously across groups.
+## gaps
+ONE round. Single message, numbered. A recommended answer only when `idea/` or `validation/` already says it: cite that, phrased so "yes" accepts. Otherwise ask, no recommendation. Ask only what draft cannot fill:
+- success metrics
+- constraints: timeline, platforms, must-use integrations
+- non-goals confirmation
+- anything validation left unclear
+Nothing missing: skip round, say so. Apply answers. Still unknown: `TBD` in Open Questions.
 
-### Flow: {name}
-1. As a ...
-2. As a ...
+## review
+Show draft summary (problem, goals, story count per flow, Non-Goals, open questions), ask what to adjust.
+Max 2 revision rounds. Then finalize.
 
-Edge cases:
-- {empty, error, permission, duplicate, offline case}
+## write
+`spec/spec.md` in project dir.
+User stories: every flow of the product, at every priority, grouped so one flow can become a journey. Later skills derive journeys, screens, prototype rules from them. Each flow ends with short `Edge cases` list. Requirements: P0 must exist, P1 should, P2 is what the user deferred.
 
-### Flow: {name}
-...
+## status
+Edit only step `spec` + top-level `state`. Keep other keys.
+Done: step done, path `spec`, result `write-spec: done NN spec/`, state `spec-created`.
+Failure (user abandons): step failed, result `write-spec: failed <reason>`.
+Name `/draw-journeys NN` as next. Do not run it.
 
-## Requirements
-### P0 (must)
-### P1 (should)
-### P2 (later)
+## report
+Last line, exactly one: `write-spec: done NN spec/` or `write-spec: failed <reason>`.
 
-## Implementation Decisions
-Prose only, behavior and module level. Stack is `django+unpoly`; do not pick another.
-- Modules built or changed, and their interfaces
-- Data model: entities, key fields, relations
-- Integrations and contracts
-- Notable interactions
-No file paths. No code.
-
-## Success Metrics
-### Leading (days-weeks)
-### Lagging (weeks-months)
-Tie lagging metrics to validation kill criteria.
-
-## Out of Scope
-Things this spec does not cover.
-
-## Open Questions
-`TBD` entries with owner or next step. Never invent answers.
-
-## Further Notes
-Constraints (timeline, platforms, must-use integrations), risks, anything else.
+## never
+Interview for known facts. Choose other stack. Put file paths or code in spec. Invent metrics or dates. Write outside `spec/` and own step.

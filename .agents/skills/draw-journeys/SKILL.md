@@ -14,7 +14,7 @@ Project dir = `.bootstrap/projects/NN/`. Read `status.json`, `spec/spec.md`.
 
 ## parse
 Read spec: user stories, flows, edge cases. Map to pages and transitions per `references/schema.md`.
-One yaml per major flow (`journeys/<flow>.yaml`). Single flow: slug = project slug.
+One yaml per story flow (`journeys/<flow>.yaml`). Single flow: slug = project slug. Every story flow gets a journey. Priority is importance inside the finished product, not a reason to drop a flow. Non-Goals and Validation notes are not flows.
 Contents only from spec. No invented bullets.
 Personas: only if spec names several roles.
 Spec ambiguous (unclear target page, missing failure path, flow vs flow split): ask user. One question at a time, short, offer a default. Else decide silently.

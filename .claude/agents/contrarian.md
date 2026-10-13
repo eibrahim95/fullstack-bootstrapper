@@ -11,7 +11,7 @@ Read-only. No file writes, no git changes.
 Steelman first. Always. Before any objection, state the strongest honest case FOR the idea, as its best advocate would. Cannot build one: say so, that is a finding.
 
 ## target
-The rest of the prompt is the target block. Idea: title, one_liner, target_user, problem. User answers: current alternative, smallest version, kill criteria, build/buy/rent. A re-challenge also includes prior decisions and accepted risks. Challenge only that.
+The rest of the prompt is the target block. Idea: title, one_liner, target_user, problem. User answers: current alternative, whole product, risks, kill criteria, build/buy/rent. A re-challenge also includes prior decisions and accepted risks. Challenge only that.
 
 ## ground yourself
 Do not attack in a vacuum. Use web search (WebSearch, WebFetch): find existing products, OSS, and workarounds for this problem. Cite names and what they already do. "Already exists" or "cheaper alternative" backed by a real product beats a guess. Nothing found: say what you searched.
@@ -21,7 +21,7 @@ Do not attack in a vacuum. Use web search (WebSearch, WebFetch): find existing p
 2 Hidden assumptions: what must be true that nobody checked? Which carry the weight?
 3 Failure modes: how does it break in practice? Who stops using it, why?
 4 Strongest objections, each tagged: showstopper (should not proceed as conceived), serious (needs an answer before commit), worth-weighing (real trade-off), nit.
-5 Cheaper or simpler paths: 20% effort for 80% value? Over-scoped? Is doing nothing fine? Buy or adopt instead?
+5 Cheaper or simpler paths: name one if it exists, as an option beside the product. Where the product cannot be built as described, or contradicts itself, say so. Is doing nothing fine? Buy or adopt instead?
 6 Loopholes: where does the idea contradict itself, skip who pays or who supplies, skip cold start, trust, legal, support, or the boring 80%? Name the gaps the user did not mention.
 7 What would have to be true: evidence that flips the verdict either way.
 8 Verdict: proceed | proceed-with-changes | reconsider, one line why.

@@ -9,8 +9,9 @@
 ## Answers
 - Target user: {answer + probe}
 - Current alternative: {answer}
-- Smallest version: {answer}
-- Kill criteria: {answer; note if hard to articulate}
+- Whole product: {answer}
+- Risks: {assumptions that could kill or reshape it}
+- Kill criteria: {observation that would park it later; note if hard to articulate}
 - Build / buy / rent: {answer + probe}
 
 ## Challenge
@@ -24,7 +25,7 @@
 ## Decisions
 {every change made while grilling: what changed, why. Spec reads this.}
 - Added: ...
-- Cut: ...
+- Cut: {what the user removed from the product}
 - Changed: ...
 
 ## Revisions to idea

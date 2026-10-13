@@ -29,14 +29,15 @@ ONE AT A TIME. Wait for answer. One probe max per question. Still weak: record a
 No web research here: alternatives come from user. Q1 show `idea.target_user`, confirm or sharpen.
 1 Target user: role, context, moment of need. "Everyone" or vague: probe once, narrowest group that benefits MOST in first 30 days?
 2 Current alternative: what do they do today? Name it. "Nothing": probe once, real-but-low-priority or fictional gap? Evidence?
-3 Smallest version: smallest thing that proves value, 1-2 days max, not the MVP. >= 1 week: probe once, which half proves the rest?
-4 Kill criteria: what concrete observation says park it? Cannot say: note it, that is signal.
-5 Build, buy, or rent: BUILD differentiating; BUY commodity, adopt OSS; RENT utility, pay SaaS. BUILD while Q2 has working product: probe once, what angle do they lack? "Do it better" is no moat.
+3 Whole product: every role, and what each does, start to finish. A demo only: probe once for the rest.
+4 Risks: assumptions that could kill or reshape it (legal, cost, trust, cold start, who pays). Name them.
+5 Kill criteria: what concrete observation would make you park it later? Record it on the validation. Cannot say: note it, that is signal.
+6 Build, buy, or rent: BUILD differentiating; BUY commodity, adopt OSS; RENT utility, pay SaaS. BUILD while Q2 has working product: probe once, what angle do they lack? "Do it better" is no moat.
 
 ### 3 challenge
 Spawn ONE fresh subagent. Fresh context on purpose: it must not share your agreement with the user.
 Model and effort: per `.agents/skills/delegate/references/choose.md`. Work is high reasoning, low volume: strong tier, high effort. Pass model explicitly. Harness: per `/delegate` launch.
-Lens: `.claude/agents/contrarian.md`. Target block: idea fields, the five answers, earlier decisions if re-challenge.
+Lens: `.claude/agents/contrarian.md`. Target block: idea fields, the six answers, earlier decisions if re-challenge.
 Claude Code: `Agent` tool, `subagent_type: contrarian`. Prompt = target block only.
 Else: read that file, drop the YAML frontmatter, prompt = body + target block. Delta: spawn `scout` (web, no file edits).
 Show its output to user verbatim. No softening, no summary. Disagree: say so as separate note.
@@ -48,12 +49,12 @@ Rounds, grilling format. Round = all independent open objections at once, number
 ```
 ❓ **Q1** - **O2 <short title>**: <objection, plain>
 
-➡️ <recommended: fix X / cut Y / check Z first>
+➡️ <recommended: change the product (a limit, a plan, a check) / check Z first>
 ```
-Wait for answers. Next round: objections that depended on earlier answers, or answers still open.
+Prefer meeting a risk with a change to the product (a limit, a plan, a check). Wait for answers. Next round: objections that depended on earlier answers, or answers still open.
 Valid outcome per objection:
-- fixed: idea changes. Say the change.
-- cut: scope removed.
+- fixed: product changes. Say the change.
+- cut: user removed it from the product. Say what was removed.
 - evidence: name concrete check, who, by when. Becomes open assumption.
 - accepted: user takes the risk, states reason. Max 2 accepted serious risks for GREEN.
 Not valid: "it will be fine", "we will see", "users will love it". Say it is not an answer, ask again once. Still hand-waving: outcome `open`.
@@ -94,4 +95,4 @@ GREEN or proceeding: name `/write-spec NN` as next. Do not run it.
 Last line, exactly one: the step `result` string.
 
 ## never
-Batch the five questions. Challenge in your own context. Soften the challenge. Accept hand-waving. Auto-run /write-spec. Write outside `validation/`, own step, and phase-5 idea fields. Print secrets.
+Batch the six questions. Challenge in your own context. Soften the challenge. Accept hand-waving. Auto-run /write-spec. Write outside `validation/`, own step, and phase-5 idea fields. Print secrets.
