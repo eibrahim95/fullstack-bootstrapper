@@ -1,6 +1,6 @@
 # Journey YAML schema
 
-One file per major flow: `journeys/<flow>.yaml`. Single flow: slug = project slug.
+One file per `### Flow:` heading in spec User Stories: `journeys/<flow>.yaml`. Single flow: slug = project slug. Not one file per story. `## Goals` is not a flow.
 
 ```yaml
 version: 1
@@ -33,7 +33,8 @@ notes: |                                  # optional
 ## Spec to YAML mapping
 | spec.md cue | becomes |
 |---|---|
-| user story / flow heading | one journey file (major flow) |
+| `### Flow:` heading | one journey file |
+| stories and edge cases under that heading | pages, transitions, success_state, error_state |
 | numbered step, screen, "user sees X" | page |
 | "click X -> Y", "then", "after X goes to Y" | transition (trigger = action) |
 | acceptance criteria Given/When/Then | success_state, error_state, transition |

@@ -39,7 +39,7 @@ No Excalidraw MCP: fallback in same file, and say `/ensure-mcp excalidraw`.
 4. Call step skill with NN. Read its report line.
    Re-read status.json after: skill wrote it.
    Draw progress (see progress).
-5. Step `failed`, or skill reports `pending` (wireframes not approved yet), or skill needs input you cannot get: stop.
+5. Step `failed`, or skill reports `pending` (journeys or wireframes not approved yet), or skill needs input you cannot get: stop.
    Say which skill, why. Say "run /<skill> NN, then run /project NN again".
    Validation RED or failed: also say user can run `/validate-idea NN override`.
 6. Step done: next.
