@@ -3,7 +3,7 @@ name: draw-wireframes
 description: Split journeys into screens, write screen inventory, draw wireframes. Use after /draw-journeys. Writes wireframes/ in project dir, sets wireframes step.
 ---
 # draw-wireframes
-Journey pages -> screens -> wireframes. Source: technique and scripts from apexyard `/wireframes` (MIT).
+Journey pages -> screens -> wireframes.
 Arg: project `NN` or slug.
 User may skip this step: /project handles it (marks `skipped`). This skill never skips itself.
 

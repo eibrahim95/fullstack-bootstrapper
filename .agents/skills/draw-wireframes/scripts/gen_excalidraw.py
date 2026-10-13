@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source: adapted from apexyard /wireframes (MIT).
+"""
 Render a screen inventory as low-fidelity wireframe cards in one .excalidraw file.
 
 Usage:

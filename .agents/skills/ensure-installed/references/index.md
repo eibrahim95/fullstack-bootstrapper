@@ -6,6 +6,7 @@
 | delta       |                     | Delta app + CLI (delta.dev) |
 | gh          | github cli          | GitHub CLI                  |
 | uv          |                     | python pkg manager          |
+| python      | python3, py         | python interpreter          |
 | docker      |                     | container runtime           |
 | just        |                     | command runner              |
 | gcloud      | google cloud sdk    | Google Cloud CLI            |

@@ -4,7 +4,6 @@ description: Write product spec from idea and validation, one round of gap quest
 ---
 # write-spec
 
-Source: apexyard write-spec and ai-hero to-spec (MIT), adapted.
 Synthesize first, ask only gaps.
 
 ## project

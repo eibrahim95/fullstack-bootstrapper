@@ -3,7 +3,7 @@ name: draw-journeys
 description: Draw user journeys from the spec as YAML plus clickable HTML flow maps. Use after /write-spec. Writes journeys/ in project dir, sets journeys step.
 ---
 # draw-journeys
-Spec in, flow maps out. Source: technique from apexyard `/journey` (MIT).
+Spec in, flow maps out.
 Arg: project `NN` or slug.
 
 ## project

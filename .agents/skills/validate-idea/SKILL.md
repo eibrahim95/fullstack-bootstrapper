@@ -4,7 +4,6 @@ description: Stress-test idea with questions, adversarial challenge, grilling lo
 ---
 # validate-idea
 
-Source: apexyard validate-idea, `/challenge` + contrarian (MIT); ai-hero `grilling` rounds (MIT). Adapted.
 Goal: find loopholes while cheap. Idea that sails through untouched is suspect, not good.
 Not Wardley, not canvas, no score rubric.
 
@@ -35,9 +34,11 @@ No web research here: alternatives come from user. Q1 show `idea.target_user`, c
 5 Build, buy, or rent: BUILD differentiating; BUY commodity, adopt OSS; RENT utility, pay SaaS. BUILD while Q2 has working product: probe once, what angle do they lack? "Do it better" is no moat.
 
 ### 3 challenge
-Spawn ONE fresh subagent (Agent tool). Fresh context on purpose: it must not share your agreement with the user.
-Model and effort: per `.agents/skills/delegate/references/choose.md`. Work is high reasoning, low volume: strong tier, high effort. Pass model explicitly.
-Prompt = all of [references/contrarian.md](references/contrarian.md) + target block (idea fields, the five answers, earlier decisions if re-challenge). Read-only.
+Spawn ONE fresh subagent. Fresh context on purpose: it must not share your agreement with the user.
+Model and effort: per `.agents/skills/delegate/references/choose.md`. Work is high reasoning, low volume: strong tier, high effort. Pass model explicitly. Harness: per `/delegate` launch.
+Lens: `.claude/agents/contrarian.md`. Target block: idea fields, the five answers, earlier decisions if re-challenge.
+Claude Code: `Agent` tool, `subagent_type: contrarian`. Prompt = target block only.
+Else: read that file, drop the YAML frontmatter, prompt = body + target block. Delta: spawn `scout` (web, no file edits).
 Show its output to user verbatim. No softening, no summary. Disagree: say so as separate note.
 Give each objection id O1.. in order.
 
@@ -57,6 +58,7 @@ Valid outcome per objection:
 - accepted: user takes the risk, states reason. Max 2 accepted serious risks for GREEN.
 Not valid: "it will be fine", "we will see", "users will love it". Say it is not an answer, ask again once. Still hand-waving: outcome `open`.
 Facts you can look up (does X exist, what does Y cost): look them up, never ask user. Use a subagent for bulk reading.
+A lookup still running is an unsettled prerequisite, not a reason to wait. Ask every open objection that does not depend on it in this round. Only the ones downstream wait for the result.
 Max 3 rounds, then ask: keep grilling or stop and judge with what is open.
 
 ### 5 amend

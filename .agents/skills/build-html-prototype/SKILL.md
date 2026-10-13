@@ -4,7 +4,6 @@ description: Build clickable HTML prototype from spec, journeys, screen inventor
 ---
 # build-html-prototype
 
-Source: apexyard `prototype-html` (MIT), adapted.
 Static clickable prototype. Replaces Figma. User opens `OUT/index.html`, clicks every inventory screen. Look matches real stack (README `django+unpoly`: Django, django-cotton, Unpoly, Alpine.js, django-basecoat, django-unicorn for high-interactivity parts, Tailwind).
 **You write no code.** Plan, spawn subagents, route findings, run commands, write Markdown. Read this file, `references/foundation.md`, `references/integration.md`, all of `references/brief/` before acting.
 

@@ -4,10 +4,13 @@ Tools: mcp__excalidraw__*. Load schemas via ToolSearch `select:` first. None fou
 
 ## layout
 Per project one row. Ids stable, so later runs update, not redraw.
-- title text `prj-NN-title`: `NN <title>: <state>`, fontSize 24.
-- 7 rectangles `prj-NN-<step id>`, 160x64, text = step id, fontSize 18, gap 60 on x.
-  Steps: idea, validation, spec, journeys, wireframes in a row. html-prototype and bootstrap in the next column, stacked: html-prototype 40 above row y, bootstrap 40 below (they run in parallel).
-- 6 arrows `prj-NN-a1`..`a6`: a1-a4 neighbours in the row, a5 wireframes -> html-prototype, a6 wireframes -> bootstrap. Bound start/end.
+Coordinates relative to origin (x0, y0). Row y = y0 + 120.
+- title text `prj-NN-title` at (x0, y0): `NN <title>: <state>`, fontSize 24.
+- 7 rectangles `prj-NN-<step id>`, 160x64, text = step id, fontSize 18.
+  Sequential row: idea, validation, spec, journeys, wireframes at x = x0 + i*220 (i = 0..4), y = row y.
+  Parallel column, x = x0 + 1160 (gap 120 after wireframes, room for the fork): html-prototype y = row y - 72, bootstrap y = row y + 72. Same x, 80 gap between them, centred on the row line: a fork, never in line with the row.
+- text `prj-NN-par` at (x0 + 1160, row y - 104): `parallel`, fontSize 14, strokeColor #868e96.
+- 6 arrows `prj-NN-a1`..`a6`: a1-a4 neighbours in the row, a5 wireframes -> html-prototype, a6 wireframes -> bootstrap. Both start at wireframes right edge middle, split up and down. No arrow between html-prototype and bootstrap. Bound start/end.
 - Running step: text `prj-NN-run` under it, its `thread` value, fontSize 14.
 - Failed step: text `prj-NN-fail`, under that rectangle, its `result` line, fontSize 14.
 
@@ -24,7 +27,7 @@ next = first pending step after last done step. None pending: no next. html-prot
 
 ## run
 1. `describe_scene`. Find `prj-NN-title`: `query_elements` type text, match id.
-2. Exists: `update_element` per rectangle (colors, strokeStyle, strokeWidth) and title text. Missing id (user deleted it): create again with batch.
+2. Exists: origin = title position. `update_element` per rectangle (colors, strokeStyle, strokeWidth, x, y per layout) and title text. Missing id (user deleted it, or `prj-NN-par` from older drawing): create again with batch.
    New: origin x = 0, y = scene bounding box bottom + 120 (0 if empty). `batch_create_elements` all elements one call.
 3. Failed step: create or update `prj-NN-fail`. Not failed: delete it if present. Same for `prj-NN-run` and running steps.
 4. `set_viewport` with `scrollToElementIds` = this project's rectangles.

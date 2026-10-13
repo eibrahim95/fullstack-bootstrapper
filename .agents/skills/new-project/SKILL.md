@@ -4,7 +4,6 @@ description: Capture a new project idea as seed for the project pipeline. Use wh
 ---
 # new-project
 Capture only. No spec, no research.
-Source: apexyard `idea` skill (MIT), ai-hero `grilling` round format (MIT).
 
 ## fields
 All required, non-empty. Arg text = title draft.

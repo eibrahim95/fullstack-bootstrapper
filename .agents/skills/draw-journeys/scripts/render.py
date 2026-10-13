@@ -5,7 +5,6 @@ Usage: render.py <journeys-dir-or-yaml> [--out-dir DIR]
 Renders every *.yaml found to <out-dir>/<name>.html (default: next to the yaml)
 and writes index.html when given a dir. Needs PyYAML (`uv run --with pyyaml ...`).
 Exit 1 on validation error. Layout: BFS rows, top-down. Template: ../references/html-template.html
-Source: layout and markup adapted from apexyard /journey (MIT).
 """
 import argparse, collections, glob, html, os, sys
 

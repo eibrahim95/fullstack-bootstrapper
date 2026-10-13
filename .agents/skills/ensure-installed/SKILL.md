@@ -23,8 +23,12 @@ Read references/index.md. Print it. Stop.
    Many match: recommend one. Ask user.
    Prefer no sudo. Warn when line uses sudo.
 6. Show exact cmd. Ask OK. Run. No OK, no run.
-7. Run check cmd again. Fail: say why. Stop.
-8. Tool file has `note`: tell user.
+7. Run check cmd again.
+   Pass: continue.
+   Fail and tool has a `path:` note: that note is a step, not only a tell. Condition true: show path cmd, ask OK, run. No OK: failed, stop. Then tell user to reload the terminal. Then step 8. Report installed. Stop. Do not recheck in this shell.
+   Condition false: say why. Stop.
+   No `path:` note: say why. Stop.
+8. Tool file has `note`: tell user. The `path:` note was already done in step 7. Still tell it.
 
 ## report
 Last line, exactly one:

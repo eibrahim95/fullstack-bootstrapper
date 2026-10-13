@@ -4,7 +4,6 @@ description: Create the app repo for a project from a registered stack, last pip
 ---
 # bootstrap-project
 Last step of the project pipeline. Creates the app's git repo from a stack in the registry, proves it works, pushes it to GitHub, then moves the project's planning files (idea, spec, journeys, wireframes...) next to the repo. Only `status.json` stays in `.bootstrap/projects/<id>/`.
-Source: apexyard `walking-skeleton-django` (MIT): plan before build, prove the slice end to end, push main only after it passes.
 
 ## Names used below
 | name | means |

@@ -15,6 +15,7 @@ Order matters. req = blocks. opt = continues.
 - req  /ensure-installed delta
 - req  /ensure-installed gh
 - req  /ensure-installed uv
+- req  /ensure-installed python
 - req  /ensure-installed docker
 - req  /ensure-installed just
 - req  /ensure-installed gcloud
@@ -33,7 +34,7 @@ Order matters. req = blocks. opt = continues.
 .bootstrap/setup.json:
 {"flow":"setup","github":{"login":null,"email":null},"gcloud":{"config":null,"project":null},"postgres":{"host":null,"port":null,"username":null,"password":null},"redis":{"host":null,"port":null,"password":null},"steps":[{"id":"git","need":"required","status":"pending","result":null}]}
 status: pending, done, failed, skipped.
-step id = last word of the call: git, npx, ensure-git, impeccable, cookiecutter, excalidraw. opt step: need `optional`.
+step id = last word of the call: git, npx, python, ensure-git, impeccable, cookiecutter, excalidraw. opt step: need `optional`.
 github.login, github.email: chosen GitHub account and commit email. Set from /ensure-git report. Later skills read it.
 gcloud.config, gcloud.project: chosen gcloud config and its project. Set from /ensure-gcloud report. Later skills read them.
 

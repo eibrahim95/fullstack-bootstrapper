@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source: adapted from apexyard /wireframes (MIT).
+"""
 Render a screen inventory as Mermaid wireframes in ONE Markdown file (no Excalidraw needed).
 
 Usage:
