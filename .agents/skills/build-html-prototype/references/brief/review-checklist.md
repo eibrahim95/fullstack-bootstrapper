@@ -4,7 +4,7 @@ You review one builder's files. You report. You fix nothing. Write findings to `
 
 For each screen, run these checks. A check you did not run is "not verified". Never report a pass for it.
 
-1. **Coverage.** Does the screen show every region and variant the inventory lists for it (`regions` and `variants` in `screen-inventory.json`)? List the missing items.
+1. **Coverage.** Does the screen show every region and variant the inventory lists for it (`regions` and `variants` in `screen-inventory.json`)? Does placement match the wireframe (`WIREFRAMES/<id>.html`), or a deviation logged in `NOTES.md`? List the missing items.
 2. **Links.** Does every entry and exit link in `assets/link-map.json` exist and point at a real file? Does every button that should navigate do so?
 3. **Stack.** Basecoat classes used, not hand-rolled equivalents? Unpoly attributes on navigation? Alpine for widgets? Page opens standalone?
 4. **CSS rule.** Run `grep -nE '<style|style=' <files>`. Report every hit. Ignore the region between `<!-- tokens:start -->` and `<!-- tokens:end -->`, and check that it matches `assets/tokens.css`. Only the data-driven colour binding is allowed otherwise. Report any hand-named class.

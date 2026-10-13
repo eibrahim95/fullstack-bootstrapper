@@ -28,7 +28,7 @@ Order matters. req = blocks. opt = continues.
 - req  /ensure-redis
 - opt  /ensure-installed impeccable (only /build-html-prototype needs it)
 - opt  /ensure-installed cookiecutter (needed by /bootstrap-project)
-- opt  /ensure-mcp excalidraw (diagrams, used by draw skills)
+- opt  /ensure-mcp excalidraw (diagrams, project progress still uses Excalidraw)
 
 ## state
 .bootstrap/setup.json:

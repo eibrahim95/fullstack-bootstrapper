@@ -22,6 +22,7 @@ Paths, absolute in every subagent brief (subagents share no shell vars):
 |---|---|
 | `PRD` | `<project>/spec/spec.md` |
 | `INV` | `<project>/wireframes/screen-inventory.{md,json}` |
+| `WIREFRAMES` | `<project>/wireframes/` (`index.html` and `<id>.html`) |
 | `JOURNEYS` | `<project>/journeys/` (yaml) |
 | `OUT` | `<project>/html-prototype/` (entry `index.html`) |
 | `BRIEF` | `<repo>/.agents/skills/build-html-prototype/references/brief/` |
@@ -34,7 +35,7 @@ Use step paths from `status.json`. Inventory missing: stop, run /draw-wireframes
 
 ## goal
 Plain HTML. UI and UX good enough for product owner to judge product. No backend, DB, API calls, build step, real file rendering. Fake auth, payment, AI with convincing screens. Copy no design from Figma or any product. Throwaway: optimise learning speed and feel, not reuse.
-Inventory decides which screens exist and where each links. Journey disagrees: follow inventory, log in `NOTES.md`. Leave PRD placeholders. Show invented values marked "(sample)", log them.
+Inventory decides which screens exist and where each links. Journey disagrees: follow inventory, log in `NOTES.md`. Wireframe HTML decides region grouping and which action is primary. Leave PRD placeholders. Show invented values marked "(sample)", log them.
 
 ## 1 setup (before any subagent)
 1. Two models (supplied in call, else ask user): implementer (builds screens), reviewer (reviews). Hardcode no names. Must differ, prefer different families. Same family: say review less independent, proceed only on confirmation. Pick effort per /delegate conventions (`.agents/skills/delegate/references/choose.md`): builders mid, reviewers by risk.
@@ -78,6 +79,7 @@ Every screen ID has exactly one owner. Unowned: lightest agent, log it. Hardest 
 Brief short, paths not pasted text:
 - Read `BRIEF/stack.md`, `BRIEF/responsive.md`, `PRODUCT.md`, `DESIGN.md`, `PRODUCT-RULES.md`, `assets/data.js`, `assets/link-map.json`, `fragments/manifest.json`, craft-floor path, reference screen. Match its shell, spacing, components.
 - Owned screen IDs, inventory rows pasted.
+- Read `WIREFRAMES/<id>.html` for owned screens. Keep region grouping and which action is primary. Visual design stays free. Log every deviation in `NOTES.md`.
 - Report format: `BRIEF/stack.md` rule 10.
 
 ## 4 review (reviewer model, parallel)

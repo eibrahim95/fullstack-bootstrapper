@@ -1,0 +1,159 @@
+/* Classes: header, body, footer, nav, title, text, note, row, field, primary, secondary, image, unset, variant, why, frame.
+   Shell: banner, phone, desktop.
+   .primary is the only non-gray fill. .image is a crossed box.
+   An empty desktop frame is hidden. */
+
+html {
+  font-family: system-ui, sans-serif;
+  color: #222;
+  background: #fff;
+}
+
+body {
+  margin: 16px;
+}
+
+a {
+  color: #222;
+}
+
+.banner {
+  color: #555;
+  font-size: 0.875rem;
+}
+
+.phone,
+.desktop,
+.frame {
+  box-sizing: border-box;
+  margin: 16px 0;
+  border: 1px solid #222;
+}
+
+.phone {
+  width: 390px;
+  min-height: 640px;
+}
+
+.desktop {
+  width: 800px;
+  min-height: 480px;
+}
+
+.desktop:has(> [data-slot="frame-desktop"]:empty) {
+  display: none;
+}
+
+.frame {
+  width: auto;
+  min-height: 0;
+  padding: 8px;
+}
+
+.header,
+.footer,
+.nav {
+  display: block;
+  padding: 8px 12px;
+  border-bottom: 1px solid #ccc;
+}
+
+.footer {
+  border-bottom: 0;
+  border-top: 1px solid #ccc;
+}
+
+.body {
+  display: block;
+  padding: 12px;
+}
+
+.title {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+}
+
+.text,
+.note,
+.variant,
+.why {
+  display: block;
+  margin: 0 0 8px;
+}
+
+.note,
+.variant,
+.why {
+  color: #555;
+  font-size: 0.875rem;
+}
+
+.row {
+  display: block;
+  padding: 8px 0;
+  border-bottom: 1px solid #ccc;
+}
+
+.field {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 8px;
+  border: 1px solid #999;
+  background: #fff;
+  color: #222;
+}
+
+.primary,
+.secondary {
+  display: inline-block;
+  margin: 0 8px 8px 0;
+  padding: 8px 12px;
+  border: 1px solid #222;
+  font: inherit;
+}
+
+.primary {
+  background: #111;
+  color: #fff;
+}
+
+.secondary {
+  background: #fff;
+  color: #222;
+}
+
+.image {
+  position: relative;
+  display: block;
+  height: 120px;
+  border: 1px solid #222;
+  overflow: hidden;
+}
+
+.image::before,
+.image::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 200%;
+  border-top: 1px solid #222;
+}
+
+.image::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.image::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.unset {
+  display: block;
+  height: 24px;
+  margin: 0 0 8px;
+  background: #ccc;
+}
