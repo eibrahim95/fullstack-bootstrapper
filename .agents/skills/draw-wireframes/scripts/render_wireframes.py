@@ -2,26 +2,40 @@
 """Render a screen inventory as grayscale HTML wireframes.
 
 Usage:
-  python3 -B -I render_wireframes.py --inventory <dir>/screen-inventory.json --out <dir> --round N
+  python3 -B -I render_wireframes.py --inventory <dir>/screen-inventory.json --out <dir> --round N [--fills <dir>/fills.html] [--reset-slots]
 
-Copies references/wireframe.css into <dir>. Writes index.html and <id>.html.
-Re-running replaces the shell and keeps data-slot inner HTML byte for byte.
+Copies references/wireframe.css into <dir>. Writes index.html (overview) and <id>.html per screen.
+The script draws the shell (app bar, tab bar, sidebar), the phone and desktop frames, the notes
+panel, and the desktop mirror. The agent fills three slots: frame (screen content), states
+(one mini frame per variant), frame-desktop (only when the wide layout differs).
+An empty frame slot is seeded from references/layouts/<layout>.html; an empty states slot gets
+one seeded mini frame per variant. Re-running keeps slot inner HTML byte for byte, unless
+--reset-slots is passed, which re-seeds every slot.
+--fills names a file of <template data-screen="<id>" data-fill="<slot>">...</template> blocks
+(format: fixtures/filled-slots.html). A block replaces that slot; it wins over the page and the seed.
 """
 import argparse, datetime, html, json, re, sys
+from typing import NoReturn
 from pathlib import Path
 
-CSS_SRC = Path(__file__).resolve().parent.parent / "references" / "wireframe.css"
+REF = Path(__file__).resolve().parent.parent / "references"
+CSS_SRC = REF / "wireframe.css"
+LAYOUT_DIR = REF / "layouts"
+CHROMES = ("app", "focus", "none")
+PLATFORMS = ("phone", "desktop", "both")
+KEPT = ("frame", "frame-desktop", "states")
 _OPEN = re.compile(
-    r"""<(?P<tag>[A-Za-z][\w:-]*)\b(?P<before>[^>]*?)\bdata-slot\s*=\s*(?P<q>["'])(?P<slot>frame-desktop|frame)(?P=q)(?P<after>[^>]*)>""",
+    r"""<(?P<tag>[A-Za-z][\w:-]*)\b(?P<before>[^>]*?)\bdata-slot\s*=\s*(?P<q>["'])(?P<slot>frame-desktop|frame-mirror|frame|states)(?P=q)(?P<after>[^>]*)>""",
     re.DOTALL,
 )
+_FILL = re.compile(r'<template data-screen="([^"]+)" data-fill="([^"]+)">\n?(.*?)\n?</template>', re.DOTALL)
 _TOKEN = re.compile(
     r"<!--.*?-->|<(?P<slash>/?)(?P<name>[A-Za-z][\w:-]*)\b(?P<rest>[^>]*)>",
     re.DOTALL,
 )
 
 
-def die(msg):
+def die(msg) -> NoReturn:
     print(msg, file=sys.stderr)
     sys.exit(1)
 
@@ -38,15 +52,17 @@ def safe_id(sid):
     return "\0" not in sid
 
 
+def layouts():
+    return sorted(p.stem for p in LAYOUT_DIR.glob("*.html"))
+
+
 def load_inventory(path):
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as e:
         die(f"{path}: {e}")
-    if isinstance(data, list):
-        return {}, "Wireframes", data, None
     if not isinstance(data, dict):
-        die(f"{path}: inventory must be an object or a list of screens")
+        die(f"{path}: inventory must be an object")
     screens = data.get("screens")
     title = data.get("title") or "Wireframes"
     if not isinstance(title, str):
@@ -56,7 +72,24 @@ def load_inventory(path):
     return data, title, screens, data.get("sections")
 
 
-def index_screens(screens, inv):
+def load_shell(data, inv):
+    shell = data.get("shell") or {}
+    errors = []
+    if not isinstance(shell, dict):
+        return {}, [f"{inv}: shell must be an object"]
+    nav = shell.get("nav", [])
+    if not isinstance(nav, list) or not all(isinstance(item, str) and item for item in nav):
+        errors.append(f"{inv}: shell nav must be a list of strings")
+        nav = []
+    brand = shell.get("brand") or data.get("title") or ""
+    proposed = shell.get("proposed", [])
+    if not isinstance(proposed, list) or not all(item in nav for item in proposed):
+        errors.append(f"{inv}: shell proposed must list nav items")
+        proposed = []
+    return {"brand": str(brand), "nav": nav, "proposed": proposed}, errors
+
+
+def index_screens(screens, inv, shell, known_layouts):
     by_id = {}
     errors = []
     for s in screens:
@@ -71,6 +104,23 @@ def index_screens(screens, inv):
             errors.append(f"{inv}: duplicate screen id {sid!r}")
             continue
         by_id[sid] = s
+        if s.get("layout") not in known_layouts:
+            errors.append(f"{inv}: screen {sid!r} layout {s.get('layout')!r} is not one of {known_layouts}")
+        if s.get("chrome") not in CHROMES:
+            errors.append(f"{inv}: screen {sid!r} chrome {s.get('chrome')!r} is not one of {list(CHROMES)}")
+        if (s.get("platform") or "both") not in PLATFORMS:
+            errors.append(f"{inv}: screen {sid!r} platform {s.get('platform')!r} is not one of {list(PLATFORMS)}")
+        nav = s.get("nav")
+        if nav is not None and nav not in shell["nav"]:
+            errors.append(f"{inv}: screen {sid!r} nav {nav!r} is not in shell nav")
+        if s.get("chrome") == "app" and not shell["nav"]:
+            errors.append(f"{inv}: screen {sid!r} chrome app needs shell nav")
+        notes = s.get("notes", [])
+        if not isinstance(notes, list) or not all(isinstance(n, dict) and isinstance(n.get("text"), str) for n in notes):
+            errors.append(f"{inv}: screen {sid!r} notes must be a list of objects with text")
+        variants = s.get("variants", [])
+        if not isinstance(variants, list) or not all(isinstance(v, str) for v in variants):
+            errors.append(f"{inv}: screen {sid!r} variants must be a list of strings")
     return by_id, errors
 
 
@@ -136,7 +186,6 @@ def resolve_sections(sections, screens, by_id, inv):
     else:
         chosen = sections
 
-    seen = []
     seen_set = set()
     for sec in chosen:
         if not isinstance(sec, dict):
@@ -153,7 +202,6 @@ def resolve_sections(sections, screens, by_id, inv):
             if sid in seen_set:
                 errors.append(f"{inv}: screen {sid!r} is listed more than once")
                 continue
-            seen.append(sid)
             seen_set.add(sid)
     for s in screens:
         sid = s.get("id")
@@ -179,10 +227,10 @@ def check_links(screens, by_id, inv):
     return errors
 
 
-def _close_span(html, start, tag):
+def _close_span(text, start, tag):
     depth = 1
     want = tag.lower()
-    for m in _TOKEN.finditer(html, start):
+    for m in _TOKEN.finditer(text, start):
         name = m.group("name")
         if name is None or name.lower() != want:
             continue
@@ -196,59 +244,59 @@ def _close_span(html, start, tag):
     return None
 
 
-def find_slots(html):
+def find_slots(text):
     found = []
-    for m in _OPEN.finditer(html):
-        tag = m.group("tag")
+    pos = 0
+    while True:
+        m = _OPEN.search(text, pos)
+        if m is None:
+            return found, None
         after = m.group("after") or ""
         if after.rstrip().endswith("/"):
-            found.append({
-                "name": m.group("slot"),
-                "elem_start": m.start(),
-                "elem_end": m.end(),
-                "inner_start": m.end(),
-                "inner_end": m.end(),
-                "inner": "",
-            })
+            found.append({"name": m.group("slot"), "inner": ""})
+            pos = m.end()
             continue
-        closed = _close_span(html, m.end(), tag)
+        closed = _close_span(text, m.end(), m.group("tag"))
         if closed is None:
             return None, m.group("slot")
         inner_end, elem_end = closed
-        found.append({
-            "name": m.group("slot"),
-            "elem_start": m.start(),
-            "elem_end": elem_end,
-            "inner_start": m.end(),
-            "inner_end": inner_end,
-            "inner": html[m.end():inner_end],
-        })
-    return found, None
+        found.append({"name": m.group("slot"), "inner": text[m.end():inner_end]})
+        # Slots never nest: continue after this one so a mirror copy inside is not read twice.
+        pos = elem_end
 
 
-def slots_from(html, path):
-    """Return (frame_inner, desktop_inner or None). A desktop slot nested in the phone slot is lifted out."""
-    found, unclosed = find_slots(html)
+def slots_from(text, path):
+    """Return {slot name: inner} for the kept slots. The mirror is derived, never kept."""
+    found, unclosed = find_slots(text)
     if unclosed:
         die(f"{path}: unclosed data-slot={unclosed!r}")
-    names = [item["name"] for item in found]
-    if names.count("frame") == 0:
+    out = {}
+    for item in found:
+        name = item["name"]
+        if name == "frame-mirror":
+            continue
+        if name in out:
+            die(f"{path}: more than one data-slot=\"{name}\"")
+        out[name] = item["inner"]
+    if "frame" not in out:
         die(f"{path}: existing page has no data-slot=\"frame\"")
-    if names.count("frame") > 1:
-        die(f"{path}: more than one data-slot=\"frame\"")
-    if names.count("frame-desktop") > 1:
-        die(f"{path}: more than one data-slot=\"frame-desktop\"")
-    frame = next(item for item in found if item["name"] == "frame")
-    desktop = next((item for item in found if item["name"] == "frame-desktop"), None)
-    if desktop is None:
-        return frame["inner"], None
-    inside = frame["inner_start"] <= desktop["elem_start"] and desktop["elem_end"] <= frame["inner_end"]
-    if not inside:
-        return frame["inner"], desktop["inner"]
-    rel_start = desktop["elem_start"] - frame["inner_start"]
-    rel_end = desktop["elem_end"] - frame["inner_start"]
-    stripped = frame["inner"][:rel_start] + frame["inner"][rel_end:]
-    return stripped, desktop["inner"]
+    return out
+
+
+def seed_frame(layout):
+    return "\n" + (LAYOUT_DIR / (layout + ".html")).read_text(encoding="utf-8")
+
+
+def seed_states(variants):
+    parts = ["\n"]
+    for v in variants:
+        parts.append(
+            "<div class=\"state\" data-variant=\"" + esc(v) + "\">"
+            "<p class=\"trigger\">" + esc(v) + "</p>"
+            "<span class=\"lines\" data-todo=\"draw this state\"></span>"
+            "</div>\n"
+        )
+    return "".join(parts)
 
 
 def banner(round_n):
@@ -276,76 +324,223 @@ def document(title, banner_text, body):
 
 def link_line(label, ids):
     if not ids:
-        return "<p>" + label + "</p>\n"
+        return "<p>" + label + " none</p>\n"
     links = ", ".join(
         "<a href=\"" + esc(i) + ".html\">" + esc(i) + "</a>" for i in ids
     )
     return "<p>" + label + " " + links + "</p>\n"
 
 
-def device(kind, slot, inner):
+def appbar(screen):
+    name = esc(screen.get("name") or screen["id"])
+    chrome = screen.get("chrome")
+    if chrome == "app":
+        return "<div class=\"appbar\" data-shell=\"appbar\"><span>" + name + "</span><span class=\"spacer\"></span><i class=\"icon\">⋯</i></div>\n"
+    if chrome == "focus":
+        return "<div class=\"appbar\" data-shell=\"appbar\"><span class=\"back\">←</span><span>" + name + "</span></div>\n"
+    return ""
+
+
+def nav_class(base, item, screen, shell):
+    cls = base
+    if item == screen.get("nav"):
+        cls += " on"
+    if item in shell["proposed"]:
+        cls += " proposed"
+    return cls
+
+
+def tabbar(screen, shell):
+    if screen.get("chrome") != "app":
+        return ""
+    items = "".join(
+        "<span class=\"" + nav_class("tab-item", item, screen, shell) + "\">" + esc(item) + "</span>"
+        for item in shell["nav"]
+    )
+    return "<div class=\"tabbar\" data-shell=\"tabbar\">" + items + "</div>\n"
+
+
+def sidebar(screen, shell):
+    if screen.get("chrome") != "app":
+        return ""
+    items = "".join(
+        "<p class=\"" + nav_class("nav-item", item, screen, shell) + "\">" + esc(item) + "</p>"
+        for item in shell["nav"]
+    )
+    return "<div class=\"sidebar\" data-shell=\"sidebar\"><p class=\"brand\">" + esc(shell["brand"]) + "</p>" + items + "</div>\n"
+
+
+def frame_class(kind, screen):
+    return kind + (" proposed" if screen.get("grounded") == "no" else "")
+
+
+def phone(screen, shell, slot, inner):
     return (
-        "<div class=\"" + kind + "\">\n"
-        "<div data-slot=\"" + slot + "\">" + inner + "</div>\n"
-        "</div>\n"
+        "<div class=\"" + frame_class("phone", screen) + "\"><div class=\"screen\">\n"
+        + appbar(screen)
+        + "<div class=\"content\" data-slot=\"" + slot + "\">" + inner + "</div>\n"
+        + tabbar(screen, shell)
+        + "</div></div>\n"
     )
 
 
-def screen_body(screen, frame_inner, desktop_inner):
+def desktop(screen, shell, body):
+    return (
+        "<div class=\"" + frame_class("desktop", screen) + "\"><div class=\"screen\">\n"
+        + sidebar(screen, shell)
+        + "<div class=\"frame-wrap\">\n" + appbar(screen)
+        + "<div class=\"content\">" + body + "</div>\n"
+        + "</div>\n</div></div>\n"
+    )
+
+
+def device(caption, frame):
+    return "<div class=\"device\"><p class=\"caption\">" + esc(caption) + "</p>\n" + frame + "</div>\n"
+
+
+def notes_panel(screen):
+    notes = screen.get("notes") or []
+    if not notes:
+        return ""
+    items = []
+    for n in notes:
+        stories = n.get("covers") or []
+        tail = ""
+        if stories:
+            tail = " <span class=\"small\">Story " + esc(", ".join(str(x) for x in stories)) + "</span>"
+        items.append("<li>" + esc(n["text"]) + tail + "</li>\n")
+    return "<div class=\"device\"><p class=\"caption\">Notes (numbers match the pins)</p>\n<ol class=\"notes\">\n" + "".join(items) + "</ol>\n</div>\n"
+
+
+def meta_line(screen):
+    parts = [
+        "Layout " + str(screen.get("layout")),
+        "chrome " + str(screen.get("chrome")),
+        "platform " + str(screen.get("platform") or "both"),
+    ]
+    covers = screen.get("covers") or []
+    if covers:
+        parts.append("stories " + ", ".join(str(c) for c in covers))
+    if screen.get("grounded") == "no":
+        parts.append("proposed screen, not in the spec")
+    return "<p class=\"note\">" + esc(" · ".join(parts)) + "</p>\n"
+
+
+def screen_body(screen, shell, slots):
     name = screen.get("name") or screen["id"]
+    frame_inner = slots.get("frame", "")
+    desk_inner = slots.get("frame-desktop", "")
+    states_inner = slots.get("states", "")
+    platform = screen.get("platform") or "both"
     parts = [
         "<p class=\"title\">" + esc(name) + "</p>\n",
         "<p class=\"note\">" + esc(screen["id"]) + "</p>\n",
+        meta_line(screen),
         link_line("From", screen.get("entry_from") or []),
         link_line("To", screen.get("exit_to") or []),
-        device("phone", "frame", frame_inner),
+        "<div class=\"board\">\n",
     ]
-    platform = screen.get("platform") or "both"
-    if desktop_inner is not None or platform == "both":
-        parts.append(device("desktop", "frame-desktop", desktop_inner or ""))
+    if platform == "desktop":
+        body = "<div data-slot=\"frame\">" + frame_inner + "</div>"
+        parts.append(device("Desktop · 1024 px", desktop(screen, shell, body)))
+        parts.append(notes_panel(screen))
+    else:
+        parts.append(device("Phone · 390 px", phone(screen, shell, "frame", frame_inner)))
+        parts.append(notes_panel(screen))
+        if platform == "both":
+            body = "<div data-slot=\"frame-desktop\">" + desk_inner + "</div>"
+            if desk_inner.strip():
+                caption = "Desktop · 1024 px · own layout"
+            else:
+                caption = "Desktop · 1024 px · same content, wide layout"
+                body += "<div class=\"mirror\" data-slot=\"frame-mirror\">" + frame_inner + "</div>"
+            parts.append(device(caption, desktop(screen, shell, body)))
+    parts.append("</div>\n")
+    if states_inner.strip():
+        parts.append("<p class=\"title\">States</p>\n")
+    parts.append("<div class=\"states\" data-slot=\"states\">" + states_inner + "</div>\n")
     return "".join(parts)
 
 
-def index_body(title, screens, sections):
+def thumb(screen, shell, frame_inner):
+    return (
+        "<div class=\"thumb\"><div class=\"thumb-in\">"
+        + phone(screen, shell, "thumb", frame_inner).replace(" data-slot=\"thumb\"", "")
+        + "</div><p><a href=\"" + esc(screen["id"]) + ".html\">" + esc(screen["id"]) + "</a> "
+        + esc(screen.get("name") or "") + "</p></div>\n"
+    )
+
+
+def index_body(title, screens, sections, shell, frames):
     by_id = {s["id"]: s for s in screens}
     count = len(screens)
     label = "1 screen" if count == 1 else f"{count} screens"
     parts = [
         "<p class=\"title\">" + esc(title) + "</p>\n",
-        "<p class=\"text\">" + label + "</p>\n",
+        "<p class=\"text\">" + label + ". Phone view of each screen. Arrows follow a journey's order. Open a screen for desktop, states, and notes.</p>\n",
     ]
+    if shell["proposed"]:
+        parts.append("<p class=\"note\">Dashed nav items are proposed, not in the spec: " + esc(", ".join(shell["proposed"])) + ".</p>\n")
     for sec in sections:
-        parts.append("<section>\n")
+        parts.append("<section class=\"overview\">\n")
         heading = sec.get("title") or sec.get("key") or "Screens"
         parts.append("<p class=\"title\">" + esc(heading) + "</p>\n")
         subtitle = sec.get("subtitle") or ""
         if str(subtitle).strip():
             parts.append("<p class=\"note\">" + esc(subtitle) + "</p>\n")
-        for sid in sec.get("ids", []):
-            name = by_id[sid].get("name") or ""
-            line = "<p><a href=\"" + esc(sid) + ".html\">" + esc(sid) + "</a>"
-            if name:
-                line += " " + esc(name)
-            parts.append(line + "</p>\n")
-        parts.append("</section>\n")
+        parts.append("<div class=\"thumbs\">\n")
+        ids = sec.get("ids", [])
+        journeys = {by_id[sid].get("journey") for sid in ids}
+        flow = len(journeys) == 1 and "cross-cutting" not in journeys and not any(sid.startswith(("hub-", "X-")) for sid in ids)
+        for n, sid in enumerate(ids):
+            if n and flow:
+                parts.append("<span class=\"arrow\">→</span>\n")
+            parts.append(thumb(by_id[sid], shell, frames[sid]))
+        parts.append("</div>\n</section>\n")
     return "".join(parts)
 
 
-def read_existing(out, screens):
+def load_fills(path, by_id):
+    fills = {}
+    errors = []
+    text = Path(path).read_text(encoding="utf-8")
+    for sid, slot, inner in _FILL.findall(text):
+        if sid not in by_id:
+            errors.append(f"{path}: data-screen {sid!r} is not a screen")
+        elif slot not in KEPT:
+            errors.append(f"{path}: data-fill {slot!r} is not one of {list(KEPT)}")
+        elif slot in fills.get(sid, {}):
+            errors.append(f"{path}: {sid} {slot} filled twice")
+        else:
+            fills.setdefault(sid, {})[slot] = "\n" + inner + "\n"
+    if text.count("<template") != len(_FILL.findall(text)):
+        errors.append(f"{path}: a <template> block is not of the form <template data-screen=\"id\" data-fill=\"slot\">")
+    return fills, errors
+
+
+def read_existing(out, screens, reset, fills):
     found = {}
     for s in screens:
         sid = s["id"]
         path = out / (sid + ".html")
-        if not path.exists():
-            found[sid] = ("", None)
-            continue
-        if not path.is_file():
-            die(f"{path}: not a file")
-        try:
-            html_text = path.read_bytes().decode("utf-8")
-        except UnicodeDecodeError as e:
-            die(f"{path}: {e}")
-        found[sid] = slots_from(html_text, path)
+        slots = {}
+        if path.exists() and not reset:
+            if not path.is_file():
+                die(f"{path}: not a file")
+            try:
+                text = path.read_bytes().decode("utf-8")
+            except UnicodeDecodeError as e:
+                die(f"{path}: {e}")
+            slots = slots_from(text, path)
+        slots.update(fills.get(sid, {}))
+        if not slots.get("frame", "").strip():
+            slots["frame"] = seed_frame(s["layout"])
+        if not slots.get("states", "").strip():
+            # Variants already drawn as tags in the frame need no mini frame.
+            drawn = set(html.unescape(v) for v in re.findall(r'data-variant="([^"]*)"', slots["frame"]))
+            missing = [v for v in s.get("variants") or [] if v not in drawn]
+            slots["states"] = seed_states(missing) if missing else ""
+        found[sid] = slots
     return found
 
 
@@ -354,37 +549,45 @@ def main():
     ap.add_argument("--inventory", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--round", required=True, type=int)
+    ap.add_argument("--reset-slots", action="store_true", help="re-seed every slot not given by --fills")
+    ap.add_argument("--fills", help="file of <template data-screen data-fill> blocks that replace slots")
     args = ap.parse_args()
     if args.round < 1:
         die("--round must be >= 1")
     inv = Path(args.inventory)
     out = Path(args.out)
-    _data, title, screens, sections = load_inventory(inv)
-    by_id, errors = index_screens(screens, inv)
+    data, title, screens, sections = load_inventory(inv)
+    shell, errors = load_shell(data, inv)
+    by_id, screen_errors = index_screens(screens, inv, shell, layouts())
+    errors.extend(screen_errors)
     chosen, sec_errors = resolve_sections(sections, screens, by_id, inv)
     errors.extend(sec_errors)
     errors.extend(check_links(screens, by_id, inv))
+    fills = {}
+    if args.fills and not errors:
+        fills, fill_errors = load_fills(args.fills, by_id)
+        errors.extend(fill_errors)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
     if not CSS_SRC.is_file():
         die(f"{CSS_SRC}: missing wireframe.css")
-    existing = read_existing(out, screens)
+    existing = read_existing(out, screens, args.reset_slots, fills)
     out.mkdir(parents=True, exist_ok=True)
     (out / "wireframe.css").write_bytes(CSS_SRC.read_bytes())
     text = banner(args.round)
+    frames = {sid: slots["frame"] for sid, slots in existing.items()}
     (out / "index.html").write_bytes(
-        document(title, text, index_body(title, screens, chosen)).encode("utf-8")
+        document(title, text, index_body(title, screens, chosen, shell, frames)).encode("utf-8")
     )
     for s in screens:
-        frame_inner, desktop_inner = existing[s["id"]]
         page = document(
             s["id"] + " " + str(s.get("name") or ""),
             text,
-            screen_body(s, frame_inner, desktop_inner),
+            screen_body(s, shell, existing[s["id"]]),
         )
         (out / (s["id"] + ".html")).write_bytes(page.encode("utf-8"))
-    print(f"screens={len(screens)} round={args.round} out={out}")
+    print(f"screens={len(screens)} round={args.round} out={out}" + (" reset-slots" if args.reset_slots else ""))
     return 0
 
 

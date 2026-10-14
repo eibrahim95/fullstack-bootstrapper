@@ -1,17 +1,49 @@
 {
-  "title": "Sample checkout screen wireframes",
+  "title": "Sample shop and reader wireframes",
+  "stories": [1, 2, 3, 4, 5, 6],
+  "shell": {"brand": "Sample", "nav": ["Shop", "Library", "Account"], "proposed": ["Account"]},
   "screens": [
-    {"id": "hub-cart-01", "journey": "co1", "name": "Cart", "kind": "primary", "platform": "both",
-     "regions": ["List of items with price", "Promo code field", "Checkout action"],
-     "variants": ["Empty cart", "Promo applied", "Loading skeleton"],
-     "entry_from": ["co1-s01"], "exit_to": ["co1-s01"]},
-    {"id": "co1-s01", "journey": "co1", "name": "Pay for order", "kind": "primary", "platform": "both",
-     "regions": ["Order summary and total", "Payment entry (processor TBD)", "Note: taxes shown at confirmation", "Pay action", "Cancel action"],
+    {"id": "hub-cart-01", "journey": "co1", "name": "Cart", "parent_page": "cart", "kind": "primary",
+     "platform": "both", "layout": "list", "chrome": "app", "nav": "Shop", "covers": [1, 2],
+     "regions": ["Cart items", "Promo code", "Order total", "Checkout"],
+     "variants": ["Empty cart", "Promo applied", "Loading"],
+     "notes": [
+       {"text": "Each item shows its price and quantity.", "covers": [1]},
+       {"text": "A promo code applies a discount to the total.", "covers": [2]}
+     ],
+     "entry_from": ["co1-s01"], "exit_to": ["co1-s01"], "debatable": false, "grounded": "yes"},
+    {"id": "co1-s01", "journey": "co1", "name": "Pay for order", "parent_page": "checkout", "kind": "primary",
+     "platform": "both", "layout": "checkout", "chrome": "focus", "covers": [3],
+     "regions": ["Order summary", "Card entry (processor TBD)", "Pay", "Cancel"],
      "variants": ["Processing", "Payment failed"],
-     "entry_from": ["hub-cart-01"], "exit_to": ["hub-cart-01", "X-01"], "debatable": true},
-    {"id": "X-01", "journey": "cross-cutting", "name": "Offline: needs a connection", "kind": "state-screen", "platform": "both",
-     "regions": ["Statement: this action needs a connection", "Retry action"],
-     "variants": ["Offline banner on every screen"],
-     "entry_from": ["co1-s01"], "exit_to": ["co1-s01"], "grounded": "no"}
+     "notes": [
+       {"text": "Taxes are shown at confirmation.", "covers": [3]},
+       {"text": "The payment processor is TBD.", "covers": [3]}
+     ],
+     "entry_from": ["hub-cart-01"], "exit_to": ["hub-cart-01", "X-01"], "debatable": true, "grounded": "yes"},
+    {"id": "hub-reader-01", "journey": "rd1", "name": "Reader", "parent_page": "reader", "kind": "primary",
+     "platform": "both", "layout": "canvas", "chrome": "focus", "covers": [4, 5],
+     "regions": ["Page", "Page controls", "Bookmarks", "Annotate"],
+     "variants": ["No saved place", "Bookmark added"],
+     "notes": [
+       {"text": "A book opens on the last page the reader left.", "covers": [4]},
+       {"text": "Bookmarks return to pages that are not the last one.", "covers": [5]}
+     ],
+     "entry_from": ["rd1-s01"], "exit_to": ["rd1-s01"], "debatable": false, "grounded": "yes"},
+    {"id": "rd1-s01", "journey": "rd1", "name": "Annotate a page", "parent_page": "reader", "kind": "primary",
+     "platform": "both", "layout": "canvas", "chrome": "focus", "covers": [6],
+     "regions": ["Page with marks", "Pen tools", "Done"],
+     "variants": ["Page cannot load"],
+     "notes": [
+       {"text": "Marks are stored on that one file in page-relative coordinates.", "covers": [6]},
+       {"text": "Marks stay put when the page is zoomed.", "covers": [6]}
+     ],
+     "entry_from": ["hub-reader-01"], "exit_to": ["hub-reader-01"], "debatable": true, "grounded": "yes"},
+    {"id": "X-01", "journey": "cross-cutting", "name": "Offline", "parent_page": "any", "kind": "state-screen",
+     "platform": "phone", "layout": "state", "chrome": "none", "covers": [],
+     "regions": ["Needs a connection", "Retry"],
+     "variants": [],
+     "notes": [{"text": "Proposed: the spec does not say what happens offline."}],
+     "entry_from": ["co1-s01"], "exit_to": ["co1-s01"], "debatable": false, "grounded": "no"}
   ]
 }

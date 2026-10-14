@@ -1,7 +1,21 @@
-/* Classes: header, body, footer, nav, title, text, note, row, field, primary, secondary, image, unset, variant, why, frame.
-   Shell: banner, phone, desktop.
-   .primary is the only non-gray fill. .image is a crossed box.
-   An empty desktop frame is hidden. */
+/* Grayscale wireframe kit. Every class here is allowed in a slot; no other class is.
+
+   Script-only (the render script writes these, never put them in a slot):
+     board, device, phone, desktop, caption, screen, frame-wrap, appbar, tabbar, tab-item, sidebar, brand,
+     nav-item, on, back, content, mirror, states, notes, overview, thumbs, thumb, thumb-in, arrow, banner.
+
+   Slot classes:
+     Layout   stack, inline, cols, main, side, grid, toolbar, spacer, divider, section, sheet, modal, overlay
+     Blocks   card, row, list, canvas, image, cover, avatar, lines, line, short, stat, bubble, me
+     Controls field, search, select, primary, secondary, link, fab, chip, tabs, tab, toggle, check,
+              radio, icon, badge, progress, stepper
+     Text     title, text, note, label, small
+     Marks    pin, tag, proposed, unset, state, trigger, why, frame, variant
+     Legacy   header, body, footer, nav (kept for old rounds)
+
+   The phone frame is 390 px, the desktop frame 1024 px. Inside .content a container query switches
+   layout at 600 px: cols go side by side, side becomes a column, grid gets more columns.
+   .primary is the only dark fill. .image and .cover are crossed boxes. .proposed is dashed. */
 
 html {
   font-family: system-ui, sans-serif;
@@ -17,38 +31,813 @@ a {
   color: #222;
 }
 
+p {
+  margin: 0;
+}
+
 .banner {
   color: #555;
   font-size: 0.875rem;
+  margin-bottom: 8px;
+}
+
+/* ---------- page board (script) ---------- */
+
+.board {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 32px;
+  margin: 16px 0;
+}
+
+.device {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.caption {
+  color: #555;
+  font-size: 0.8125rem;
 }
 
 .phone,
-.desktop,
-.frame {
+.desktop {
   box-sizing: border-box;
-  margin: 16px 0;
-  border: 1px solid #222;
+  border: 2px solid #222;
+  background: #fff;
+  overflow: hidden;
 }
 
 .phone {
   width: 390px;
-  min-height: 640px;
+  min-height: 760px;
+  border-radius: 28px;
 }
 
 .desktop {
-  width: 800px;
-  min-height: 480px;
+  width: 1024px;
+  min-height: 600px;
+  border-radius: 6px;
 }
 
-.desktop:has(> [data-slot="frame-desktop"]:empty) {
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: inherit;
+}
+
+.phone > .screen {
+  min-height: 756px;
+}
+
+.desktop > .screen {
+  flex-direction: row;
+  min-height: 596px;
+}
+
+.desktop > .screen > .frame-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.appbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 14px;
+  border-bottom: 1px solid #bbb;
+  font-weight: 600;
+}
+
+.appbar .spacer {
+  flex: 1;
+}
+
+.back {
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+.tabbar {
+  display: flex;
+  border-top: 1px solid #bbb;
+  margin-top: auto;
+}
+
+.tab-item {
+  flex: 1;
+  padding: 8px 2px 12px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.tab-item::before {
+  content: "";
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 0 auto 4px;
+  border: 1.5px solid #888;
+  border-radius: 5px;
+}
+
+.tab-item.on {
+  color: #111;
+  font-weight: 600;
+}
+
+.tab-item.on::before {
+  background: #bbb;
+  border-color: #111;
+}
+
+.sidebar {
+  flex: 0 0 190px;
+  padding: 16px 12px;
+  border-right: 1px solid #bbb;
+  background: #f4f4f4;
+}
+
+.brand {
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.nav-item {
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  color: #555;
+}
+
+.nav-item.on {
+  background: #ddd;
+  color: #111;
+  font-weight: 600;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
+  padding: 14px;
+}
+
+/* Slot wrappers and top-level blocks grow, so a canvas or list can fill the frame. */
+.content > [data-slot] {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.mirror {
+  min-width: 0;
+}
+
+.content > [data-slot]:empty {
   display: none;
 }
 
-.frame {
-  width: auto;
-  min-height: 0;
-  padding: 8px;
+.content > :is(.cols, .stack),
+[data-slot] > :is(.cols, .stack) {
+  flex: 1;
 }
+
+/* ---------- side panels on the screen page (script) ---------- */
+
+.notes {
+  width: 340px;
+  margin: 0;
+  padding: 12px 12px 12px 36px;
+  border: 1px solid #ccc;
+  background: #fafafa;
+  font-size: 0.875rem;
+}
+
+.notes li {
+  margin-bottom: 8px;
+}
+
+.states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.state {
+  box-sizing: border-box;
+  width: 240px;
+  min-height: 180px;
+  padding: 10px;
+  border: 2px solid #222;
+  border-radius: 14px;
+  font-size: 0.875rem;
+  container-type: inline-size;
+}
+
+.trigger {
+  display: block;
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed #999;
+  color: #555;
+  font-size: 0.75rem;
+}
+
+/* ---------- index overview (script) ---------- */
+
+.overview {
+  margin: 24px 0;
+}
+
+.thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+}
+
+.thumb-in {
+  width: 195px;
+  height: 380px;
+  overflow: hidden;
+  border: 1px solid #222;
+  border-radius: 14px;
+}
+
+.thumb-in > .phone {
+  transform: scale(0.5);
+  transform-origin: 0 0;
+  border-width: 2px;
+}
+
+.arrow {
+  font-size: 1.5rem;
+  color: #777;
+}
+
+/* ---------- layout ---------- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.cols {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* On a phone a side panel is a collapsed bottom sheet. */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #999;
+  border-radius: 14px 14px 0 0;
+  background: #f4f4f4;
+}
+
+.side::before {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto 4px;
+  border-radius: 2px;
+  background: #999;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@container (min-width: 600px) {
+  .cols {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .side {
+    flex: 0 0 240px;
+    border-radius: 6px;
+  }
+
+  .side::before {
+    display: none;
+  }
+
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .fab {
+    position: static;
+  }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid #999;
+  border-radius: 10px;
+  background: #f4f4f4;
+}
+
+.divider {
+  height: 0;
+  border-top: 1px solid #ccc;
+  margin: 4px 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #222;
+  border-radius: 16px 16px 0 0;
+  background: #fff;
+}
+
+.overlay {
+  padding: 24px 12px;
+  background: #ccc;
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #222;
+  border-radius: 10px;
+  background: #fff;
+}
+
+/* ---------- blocks ---------- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #999;
+  border-radius: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #ccc;
+}
+
+.row > .stack,
+.row > .lines {
+  flex: 1;
+  min-width: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas {
+  position: relative;
+  flex: 1;
+  min-height: 300px;
+  border: 1px solid #222;
+  background: #fff;
+  padding: 18px;
+  background-image: repeating-linear-gradient(#fff 0 10px, #ddd 10px 18px, #fff 18px 28px);
+  background-clip: content-box;
+}
+
+.image,
+.cover {
+  position: relative;
+  display: block;
+  border: 1px solid #222;
+  overflow: hidden;
+  background: #fff;
+}
+
+.image {
+  height: 120px;
+}
+
+.cover {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 68px;
+}
+
+.grid > .cover,
+.grid > .card > .cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+}
+
+.image::before,
+.image::after,
+.cover::before,
+.cover::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 200%;
+  border-top: 1px solid #222;
+}
+
+.image::before,
+.cover::before {
+  transform: translate(-50%, -50%) rotate(56deg);
+}
+
+.image::after,
+.cover::after {
+  transform: translate(-50%, -50%) rotate(-56deg);
+}
+
+.avatar {
+  flex: 0 0 auto;
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #222;
+  border-radius: 50%;
+  background: #ddd;
+}
+
+.lines {
+  display: block;
+  height: 40px;
+  background: repeating-linear-gradient(#ccc 0 8px, transparent 8px 16px);
+}
+
+.line {
+  display: block;
+  height: 8px;
+  margin: 4px 0;
+  background: #ccc;
+}
+
+.short {
+  width: 45%;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #999;
+  border-radius: 8px;
+}
+
+.stat .title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.bubble {
+  align-self: flex-start;
+  max-width: 80%;
+  padding: 8px 10px;
+  border: 1px solid #999;
+  border-radius: 12px;
+  background: #f4f4f4;
+}
+
+.bubble.me {
+  align-self: flex-end;
+  background: #fff;
+}
+
+/* ---------- controls ---------- */
+
+.field,
+.search,
+.select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #999;
+  border-radius: 6px;
+  background: #fff;
+  color: #777;
+}
+
+.row > .field,
+.inline > .field,
+.inline > .search {
+  flex: 1 1 120px;
+  width: auto;
+}
+
+.row > .select,
+.inline > .select {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.search {
+  padding-left: 32px;
+  border-radius: 20px;
+  position: relative;
+}
+
+.search::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid #777;
+  border-radius: 50%;
+  transform: translateY(-60%);
+}
+
+.select::after {
+  content: " \25BE";
+  float: right;
+}
+
+.label {
+  display: block;
+  margin: 2px 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.primary,
+.secondary {
+  display: inline-block;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid #222;
+  border-radius: 8px;
+  text-align: center;
+  font: inherit;
+}
+
+.primary {
+  background: #111;
+  color: #fff;
+}
+
+.secondary {
+  background: #fff;
+  color: #222;
+}
+
+.stack > .primary,
+.stack > .secondary {
+  display: block;
+}
+
+.stack > :is(.badge, .pin, .tag, .chip, .avatar, .icon),
+.card > :is(.badge, .pin, .tag, .chip, .avatar, .icon),
+.section > :is(.badge, .pin, .tag, .chip, .avatar, .icon),
+.main > :is(.badge, .pin, .tag, .chip, .avatar, .icon),
+.side > :is(.badge, .pin, .tag, .chip, .avatar, .icon) {
+  align-self: flex-start;
+}
+
+.link {
+  text-decoration: underline;
+  color: #222;
+}
+
+.fab {
+  position: sticky;
+  bottom: 12px;
+  align-self: flex-end;
+  border-radius: 24px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid #999;
+  border-radius: 14px;
+  font-size: 0.8125rem;
+}
+
+.chip.on,
+.tab.on {
+  background: #ddd;
+  border-color: #222;
+  font-weight: 600;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #999;
+}
+
+.tab {
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  font-size: 0.875rem;
+}
+
+.toggle,
+.check,
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle::before {
+  content: "";
+  display: inline-block;
+  width: 30px;
+  height: 16px;
+  border: 1.5px solid #222;
+  border-radius: 10px;
+  background: radial-gradient(circle at 22px 50%, #222 5px, transparent 6px);
+}
+
+.check::before,
+.radio::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #222;
+}
+
+.radio::before {
+  border-radius: 50%;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #999;
+  border-radius: 6px;
+  font-style: normal;
+  font-size: 0.875rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid #555;
+  border-radius: 8px;
+  font-size: 0.75rem;
+}
+
+.progress {
+  display: block;
+  height: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #888 0 40%, #fff 40%);
+}
+
+.stepper {
+  display: flex;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #555;
+}
+
+/* ---------- text ---------- */
+
+.title {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.text {
+  display: block;
+}
+
+.note,
+.small,
+.variant,
+.why {
+  display: block;
+  color: #555;
+  font-size: 0.8125rem;
+}
+
+/* ---------- marks ---------- */
+
+.pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  border-radius: 9px;
+  background: #555;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-style: normal;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1px dashed #555;
+  font-size: 0.75rem;
+  color: #555;
+}
+
+.proposed {
+  outline: 2px dashed #777;
+  outline-offset: 2px;
+}
+
+.unset {
+  display: block;
+  height: 24px;
+  margin: 0 0 8px;
+  background: #ccc;
+}
+
+.frame {
+  box-sizing: border-box;
+  margin: 8px 0;
+  padding: 8px;
+  border: 1px solid #222;
+}
+
+.why {
+  margin-top: 8px;
+}
+
+/* ---------- legacy (rounds before layout templates) ---------- */
 
 .header,
 .footer,
@@ -66,94 +855,4 @@ a {
 .body {
   display: block;
   padding: 12px;
-}
-
-.title {
-  display: block;
-  margin: 0 0 8px;
-  font-size: 1.125rem;
-}
-
-.text,
-.note,
-.variant,
-.why {
-  display: block;
-  margin: 0 0 8px;
-}
-
-.note,
-.variant,
-.why {
-  color: #555;
-  font-size: 0.875rem;
-}
-
-.row {
-  display: block;
-  padding: 8px 0;
-  border-bottom: 1px solid #ccc;
-}
-
-.field {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  margin: 0 0 8px;
-  padding: 8px;
-  border: 1px solid #999;
-  background: #fff;
-  color: #222;
-}
-
-.primary,
-.secondary {
-  display: inline-block;
-  margin: 0 8px 8px 0;
-  padding: 8px 12px;
-  border: 1px solid #222;
-  font: inherit;
-}
-
-.primary {
-  background: #111;
-  color: #fff;
-}
-
-.secondary {
-  background: #fff;
-  color: #222;
-}
-
-.image {
-  position: relative;
-  display: block;
-  height: 120px;
-  border: 1px solid #222;
-  overflow: hidden;
-}
-
-.image::before,
-.image::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 200%;
-  border-top: 1px solid #222;
-}
-
-.image::before {
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-
-.image::after {
-  transform: translate(-50%, -50%) rotate(-45deg);
-}
-
-.unset {
-  display: block;
-  height: 24px;
-  margin: 0 0 8px;
-  background: #ccc;
 }

@@ -5,6 +5,11 @@ Usage:
   python3 -B -I check_wireframes.py --inventory <dir>/screen-inventory.json --dir <dir>
 
 Prints `ok screens=N` and exits 0, or one `path: reason` line per failure and exits 1.
+
+Inventory: every story in `stories` is covered by some screen; labels are short; notes, covers,
+proposed are well formed. Pages: slots match the inventory, no `data-todo` left, every note is
+pinned, proposed regions are marked, no sentence-length text on a frame, shell matches chrome.
+It does not judge layout quality: screenshot and look.
 """
 import argparse, hashlib, json, re, sys
 from html.parser import HTMLParser
@@ -12,6 +17,9 @@ from pathlib import Path
 
 CSS_SRC = Path(__file__).resolve().parent.parent / "references" / "wireframe.css"
 _CLASS = re.compile(r"\.([_A-Za-z][_A-Za-z0-9-]*)")
+MAX_LABEL_WORDS = 6
+MAX_TEXT_WORDS = 14
+MAX_FRAME_WORDS = 150
 _FORBIDDEN = ("<style", "style=", "<script", "http://", "https://", "javascript:", "data:")
 
 
@@ -28,12 +36,68 @@ def load_inventory(path, errors):
         data = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as e:
         errors.append(f"{path}: {e}")
-        return []
-    screens = data if isinstance(data, list) else data.get("screens") if isinstance(data, dict) else None
+        return {}, []
+    screens = data.get("screens") if isinstance(data, dict) else None
     if not isinstance(screens, list):
         errors.append(f"{path}: screens must be a list")
-        return []
-    return screens
+        return {}, []
+    return data, screens
+
+
+def int_list(val):
+    return isinstance(val, list) and all(isinstance(x, int) and not isinstance(x, bool) for x in val)
+
+
+def words(text):
+    return len(text.split())
+
+
+def check_inventory(data, screens, inv, errors):
+    stories = data.get("stories")
+    if not int_list(stories) or not stories:
+        errors.append(f"{inv}: stories must be a non-empty list of spec story numbers")
+        stories = []
+    covered = set()
+    for screen in screens:
+        if not isinstance(screen, dict):
+            continue
+        sid = screen.get("id")
+        covers = screen.get("covers", [])
+        if not int_list(covers):
+            errors.append(f"{inv}: screen {sid!r} covers must be a list of story numbers")
+            covers = []
+        if not covers and screen.get("grounded") != "no":
+            errors.append(f"{inv}: screen {sid!r} covers no story; set grounded no if the spec does not ask for it")
+        for c in covers:
+            if stories and c not in stories:
+                errors.append(f"{inv}: screen {sid!r} covers {c} which is not in stories")
+        covered.update(covers)
+        for key in ("regions", "variants"):
+            for label in screen.get(key) or []:
+                if isinstance(label, str) and words(label) > MAX_LABEL_WORDS:
+                    errors.append(
+                        f"{inv}: screen {sid!r} {key[:-1]} {label!r} has over {MAX_LABEL_WORDS} words; "
+                        "name the UI part and move the sentence to notes"
+                    )
+        notes = screen.get("notes", [])
+        if not isinstance(notes, list):
+            errors.append(f"{inv}: screen {sid!r} notes is not a list")
+            notes = []
+        for n, note in enumerate(notes, 1):
+            if not isinstance(note, dict) or not isinstance(note.get("text"), str) or not note["text"].strip():
+                errors.append(f"{inv}: screen {sid!r} note {n} needs text")
+                continue
+            if "covers" in note and not int_list(note["covers"]):
+                errors.append(f"{inv}: screen {sid!r} note {n} covers must be story numbers")
+            else:
+                covered.update(note.get("covers", []))
+        proposed = screen.get("proposed", [])
+        regions = screen.get("regions") or []
+        if not isinstance(proposed, list) or any(p not in regions for p in proposed):
+            errors.append(f"{inv}: screen {sid!r} proposed must list some of its regions")
+    for story in stories:
+        if story not in covered:
+            errors.append(f"{inv}: story {story} is covered by no screen")
 
 
 def string_list(screen, key, inv, errors):
@@ -96,18 +160,34 @@ def walk(node):
         yield from walk(child)
 
 
+SLOTS = {"frame", "frame-desktop", "frame-mirror", "states"}
+
+
 def slot_name(node):
     name = node.attrs.get("data-slot")
-    return name if name in {"frame", "frame-desktop"} else None
+    return name if name in SLOTS else None
+
+
+def boxed(node):
+    return "frame" in node.classes() or "state" in node.classes() or slot_name(node)
 
 
 def count_primary(node):
     count = 1 if "primary" in node.classes() else 0
     for child in node.children:
-        if "frame" in child.classes() or slot_name(child):
+        if boxed(child):
             continue
         count += count_primary(child)
     return count
+
+
+def own_texts(node):
+    for item in walk(node):
+        if "pin" in item.classes():
+            continue
+        for text in item.texts:
+            if text.strip():
+                yield text.strip()
 
 
 def link_target(href, page, root):
@@ -165,7 +245,7 @@ def check_primaries(path, node, label, errors):
     if count > 1:
         errors.append(f"{path}: {count} elements with class primary in {label}")
     for child in walk(node):
-        if child is node or "frame" not in child.classes():
+        if child is node or not ("frame" in child.classes() or "state" in child.classes()):
             continue
         nested = count_primary(child)
         if nested > 1:
@@ -193,6 +273,8 @@ def check_page(path, raw, allowed, root, errors, screen=None, inv=None):
             errors.append(f"{path}: link {href!r} does not resolve to a file in {root}")
     slots = [node for node in walk(tree) if slot_name(node)]
     for node in slots:
+        if node.attrs["data-slot"] == "frame-mirror":
+            continue
         label = node.attrs["data-slot"]
         check_primaries(path, node, label, errors)
         if label == "frame-desktop" and node.visible_text().strip():
@@ -200,6 +282,7 @@ def check_page(path, raw, allowed, root, errors, screen=None, inv=None):
                 errors.append(f"{path}: filled desktop frame has no class why")
     if screen is None:
         return
+    check_screen(path, tree, slots, screen, errors)
     outside = [
         node for node in walk(tree)
         if ("data-region" in node.attrs or "data-variant" in node.attrs)
@@ -209,6 +292,11 @@ def check_page(path, raw, allowed, root, errors, screen=None, inv=None):
         errors.append(f"{path}: data-region or data-variant outside a slot")
     regions = string_list(screen, "regions", inv, errors)
     variants = string_list(screen, "variants", inv, errors)
+    frame = next((node for node in slots if node.attrs["data-slot"] == "frame"), None)
+    if regions is not None and frame is not None:
+        missing = sorted(set(regions) - set(marked(frame, "data-region")))
+        if missing:
+            errors.append(f"{path}: data-region not in the main frame {missing!r}")
     if regions is not None:
         found, expected = set(marked(tree, "data-region")), set(regions)
         if found != expected:
@@ -235,6 +323,66 @@ def check_page(path, raw, allowed, root, errors, screen=None, inv=None):
                 errors.append(f"{path}: visible text for variant {variant!r} does not contain TBD")
 
 
+def check_screen(path, tree, slots, screen, errors):
+    by_name = {node.attrs["data-slot"]: node for node in slots}
+    frame = by_name.get("frame")
+    if frame is None:
+        errors.append(f"{path}: no data-slot frame")
+        return
+    for node in slots:
+        if node.attrs["data-slot"] == "frame-mirror":
+            continue
+        if any("data-todo" in item.attrs for item in walk(node)):
+            todos = sorted({item.attrs["data-todo"] for item in walk(node) if "data-todo" in item.attrs})
+            errors.append(f"{path}: template placeholder left in {node.attrs['data-slot']}: {todos!r}")
+    for node in slots:
+        if node.attrs["data-slot"] == "frame-mirror":
+            continue
+        for text in own_texts(node):
+            if words(text) > MAX_TEXT_WORDS:
+                errors.append(f"{path}: sentence on a frame ({words(text)} words), move it to notes: {text[:60]!r}")
+    total = sum(words(t) for t in own_texts(frame))
+    if total > MAX_FRAME_WORDS:
+        errors.append(f"{path}: {total} words in the main frame (max {MAX_FRAME_WORDS}); use labels, lines, notes")
+    notes = screen.get("notes") or []
+    pins = [item for item in walk(frame) if "data-note" in item.attrs]
+    pinned = {item.attrs["data-note"] for item in pins}
+    for n in range(1, len(notes) + 1):
+        if str(n) not in pinned:
+            errors.append(f"{path}: note {n} has no pin (data-note=\"{n}\") in the main frame")
+    for item in pins:
+        if "pin" not in item.classes():
+            errors.append(f"{path}: data-note {item.attrs['data-note']!r} element needs class pin")
+        if item.attrs["data-note"] not in {str(n) for n in range(1, len(notes) + 1)}:
+            errors.append(f"{path}: pin {item.attrs['data-note']!r} has no note")
+    for label in screen.get("proposed") or []:
+        nodes = [item for item in walk(tree) if item.attrs.get("data-region") == label]
+        if any("proposed" not in item.classes() for item in nodes):
+            errors.append(f"{path}: proposed region {label!r} needs class proposed")
+    chrome = screen.get("chrome")
+    shells = {item.attrs.get("data-shell") for item in walk(tree) if "data-shell" in item.attrs}
+    nav_bar = "sidebar" if screen.get("platform") == "desktop" else "tabbar"
+    want = {"app": {"appbar", nav_bar}, "focus": {"appbar"}, "none": set()}.get(chrome)
+    if want is None:
+        errors.append(f"{path}: chrome {chrome!r} is not app, focus or none")
+    elif not want <= shells or (chrome != "app" and shells & {"tabbar", "sidebar"}):
+        errors.append(f"{path}: shell does not match chrome {chrome!r}; rerun the render script")
+    mirror = by_name.get("frame-mirror")
+    if mirror is not None and marked(mirror, "data-region") != marked(frame, "data-region"):
+        errors.append(f"{path}: desktop mirror is stale; rerun the render script")
+    desk = by_name.get("frame-desktop")
+    platform = screen.get("platform") or "both"
+    if platform == "both" and mirror is None and (desk is None or not desk.visible_text().strip()):
+        errors.append(f"{path}: platform both has no desktop view; rerun the render script")
+    variants = screen.get("variants") or []
+    shown = set(marked(frame, "data-variant"))
+    if "states" in by_name:
+        shown |= set(marked(by_name["states"], "data-variant"))
+    for v in variants:
+        if v not in shown:
+            errors.append(f"{path}: variant {v!r} is not in the main frame or the states slot")
+
+
 def ancestors(root, target):
     found = []
 
@@ -259,7 +407,9 @@ def main():
     inv = Path(args.inventory)
     root = Path(args.directory)
     errors = []
-    screens = load_inventory(inv, errors)
+    data, screens = load_inventory(inv, errors)
+    if data:
+        check_inventory(data, screens, inv, errors)
     if not CSS_SRC.is_file():
         errors.append(f"{CSS_SRC}: missing wireframe.css")
         allowed = set()
@@ -286,7 +436,7 @@ def main():
             errors.append(f"{page}: no file for inventory id {sid!r}")
 
     if root.is_dir():
-        html_files = sorted(p for p in root.glob("*.html") if p.is_file())
+        html_files = sorted(p for p in root.glob("*.html") if p.is_file() and p.name != "fills.html")
     else:
         html_files = []
         errors.append(f"{root}: not a directory")

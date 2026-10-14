@@ -1,0 +1,83 @@
+<!-- Filled slots for fixtures/sample-inventory.json: only what the agent writes.
+     The render script draws everything else (shell, desktop mirror, notes panel, index).
+     Conventions shown: data-region on the real control, short labels, `lines` for body text,
+     <i class="pin" data-note="N">N</i> pins, one primary per frame, states as mini frames
+     (class state, first child trigger), small states as `tag` in the frame.
+     scripts/selftest.py renders and checks this file against the inventory. -->
+
+<!-- hub-cart-01 Cart: list layout, chrome app. Three example rows, not a sentence saying 'list'. Pins sit on the part a note is about. 'Promo applied' is a small state, so it is a tag in the frame. -->
+<template data-screen="hub-cart-01" data-fill="frame">
+<div class="stack">
+<div class="list" data-region="Cart items">
+<div class="row"><span class="cover"></span><div class="stack"><p class="text">Item name <i class="pin" data-note="1">1</i></p><span class="line short"></span></div><p class="select">Qty 1</p><p class="text">12.00</p></div>
+<div class="row"><span class="cover"></span><div class="stack"><p class="text">Item name</p><span class="line short"></span></div><p class="select">Qty 2</p><p class="text">30.00</p></div>
+<div class="row"><span class="cover"></span><div class="stack"><p class="text">Item name</p><span class="line short"></span></div><p class="select">Qty 1</p><p class="text">8.00</p></div>
+</div>
+<div class="inline" data-region="Promo code"><p class="field">Promo code</p><p class="secondary">Apply</p><i class="pin" data-note="2">2</i><span class="tag" data-variant="Promo applied">Promo applied</span></div>
+<div class="row" data-region="Order total"><p class="text">Total</p><span class="spacer"></span><p class="title">50.00</p></div>
+<p class="primary" data-region="Checkout">Checkout</p>
+</div>
+</template>
+<template data-screen="hub-cart-01" data-fill="states">
+<div class="state" data-variant="Empty cart"><p class="trigger">Empty cart: no items yet</p><div class="stack"><span class="image"></span><p class="text">Your cart is empty</p><p class="primary">Browse the shop</p></div></div>
+<div class="state" data-variant="Loading"><p class="trigger">Loading: items not fetched yet</p><div class="list"><div class="row"><span class="cover"></span><span class="lines"></span></div><div class="row"><span class="cover"></span><span class="lines"></span></div></div></div>
+</template>
+
+<!-- co1-s01 Pay for order: checkout layout, chrome focus. `cols` with `main` + `side`: the summary is a bottom sheet on phone and a side column on desktop, from one slot. TBD stays visible in the label. -->
+<template data-screen="co1-s01" data-fill="frame">
+<div class="stack">
+<p class="stepper"><span>1 Cart</span><span>2 Pay</span><span>3 Done</span></p>
+<div class="cols">
+<div class="main" data-region="Card entry (processor TBD)">
+<p class="label">Card (processor TBD) <i class="pin" data-note="2">2</i></p><p class="field">Card number</p>
+<div class="inline"><p class="field">MM/YY</p><p class="field">CVC</p></div>
+<p class="field">Name on card</p>
+</div>
+<div class="side" data-region="Order summary"><p class="label">Summary <i class="pin" data-note="1">1</i></p><div class="row"><span class="line short"></span><span class="spacer"></span><p class="text">42.00</p></div><div class="row"><span class="line short"></span><span class="spacer"></span><p class="text">8.00</p></div><div class="row"><p class="text">Total</p><span class="spacer"></span><p class="title">50.00</p></div></div>
+</div>
+<p class="primary" data-region="Pay">Pay 50.00</p>
+<p class="link" data-region="Cancel">Cancel</p>
+</div>
+</template>
+<template data-screen="co1-s01" data-fill="states">
+<div class="state" data-variant="Processing"><p class="trigger">Processing: after Pay</p><div class="stack"><span class="progress"></span><p class="text">Paying…</p><p class="secondary">Pay 50.00</p></div></div>
+<div class="state" data-variant="Payment failed"><p class="trigger">Payment failed: card declined</p><div class="stack"><p class="tag">Card declined. Try another card.</p><p class="field">Card number</p><p class="primary">Try again</p></div></div>
+</template>
+
+<!-- hub-reader-01 Reader: canvas layout. The page gets most of the space; controls are a toolbar and a fab in thumb reach. Annotate is a separate screen (rd1-s01), not a variant. -->
+<template data-screen="hub-reader-01" data-fill="frame">
+<div class="cols">
+<div class="main">
+<div class="toolbar" data-region="Page controls"><i class="icon">−</i><i class="icon">+</i><i class="icon" data-variant="Bookmark added">★</i><span class="spacer"></span><span class="small">Page 84 / 310</span><i class="pin" data-note="1">1</i></div>
+<div class="canvas" data-region="Page"></div>
+<p class="primary fab" data-region="Annotate">✎ Annotate</p>
+</div>
+<div class="side" data-region="Bookmarks"><p class="label">Bookmarks <i class="pin" data-note="2">2</i></p><div class="row"><p class="text">p. 12</p><span class="line short"></span></div><div class="row"><p class="text">p. 57</p><span class="line short"></span></div></div>
+</div>
+</template>
+<template data-screen="hub-reader-01" data-fill="states">
+<div class="state" data-variant="No saved place"><p class="trigger">No saved place: first open</p><div class="stack"><div class="toolbar"><span class="small">Page 1 / 310</span></div><span class="lines"></span><span class="lines"></span></div></div>
+</template>
+
+<!-- rd1-s01 Annotate a page: the annotate mode of the reader: its own screen because the toolbar and main action change (R2). -->
+<template data-screen="rd1-s01" data-fill="frame">
+<div class="cols">
+<div class="main">
+<div class="toolbar" data-region="Pen tools"><i class="icon">✎</i><i class="icon">▮</i><i class="icon">⌫</i><span class="chip on">Black</span><span class="chip">Red</span><span class="spacer"></span><i class="icon">↶</i><p class="primary" data-region="Done">Done</p></div>
+<div class="canvas" data-region="Page with marks"><span class="tag">ink stroke</span> <i class="pin" data-note="1">1</i> <i class="pin" data-note="2">2</i></div>
+</div>
+</div>
+</template>
+<template data-screen="rd1-s01" data-fill="states">
+<div class="state" data-variant="Page cannot load"><p class="trigger">Page cannot load: file missing</p><div class="stack"><span class="image"></span><p class="text">This page cannot be shown</p><p class="note">Marks stay hidden</p><p class="primary">Retry</p></div></div>
+</template>
+
+<!-- X-01 Offline: state layout, chrome none, grounded no. No states slot because it has no variants. -->
+<template data-screen="X-01" data-fill="frame">
+<div class="stack">
+<span class="image"></span>
+<p class="title" data-region="Needs a connection">You are offline <i class="pin" data-note="1">1</i></p>
+<p class="text">This needs a connection.</p>
+<p class="primary" data-region="Retry">Retry</p>
+</div>
+</template>
