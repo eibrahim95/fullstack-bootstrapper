@@ -1,9 +1,9 @@
 ---
 name: bootstrap-project
-description: Create the app repo for a project from a registered stack, last pipeline step. Use after wireframes; runs in parallel with /build-html-prototype. Scaffolds new git repo, creates local DB and GitHub repo, pushes main, moves done artifacts out of .bootstrap.
+description: Create the app repo for a project from a registered stack, last pipeline step. Use after wireframes; runs in parallel with /build-html-prototype. Scaffolds new git repo, pushes generated code to main on a new GitHub repo, creates local DB, opens one PR with a commit per goal, moves done artifacts out of .bootstrap.
 ---
 # bootstrap-project
-Last step of the project pipeline. Creates the app's git repo from a stack in the registry, proves it works, pushes it to GitHub, then moves the project's planning files (idea, spec, journeys, wireframes...) next to the repo. Only `status.json` stays in `.bootstrap/projects/<id>/`.
+Last step of the project pipeline. Creates the app's git repo from a stack in the registry and pushes the generated code to `main` on GitHub. Then it reaches the stack's goals on one branch, a commit per goal, opens a PR, and moves the project's planning files (idea, spec, journeys, wireframes...) next to the repo. Only `status.json` stays in `.bootstrap/projects/<id>/`.
 
 ## Names used below
 | name | means |
@@ -35,7 +35,7 @@ If bootstrap is already `done`: report skipped, and say where the repo and artif
 If bootstrap is `running`: another thread owns it. Say so, show its `thread`, and stop. If the user says that thread is dead, continue (see resume below).
 When all checks pass, mark the step running: status helper `step bootstrap status=running path=null`.
 
-**Resume:** if `status.json` already has `repo_path` and that repo has a commit, the earlier run got past step 7. Jump to step 8; each later part skips what is already done.
+**Resume:** if `status.json` already has `repo_path` and that repo has a commit, the earlier run got past step 5. Jump to step 6; each later part skips what is already done (repo created, `main` pushed, database created, goal commits made, PR opened).
 
 ## 2 Ask where and how
 Ask everything in one round, each question with a recommended answer:
@@ -62,8 +62,9 @@ Read the stack file. Show the user:
 - the generate command(s) from the stack file's Source section, filled with the answers
 - the stack's goals, one line each
 - the database name from the stack file's Database section, and the Postgres host, port and user from setup.json
-- the exact `gh repo create <owner>/<slug> --<visibility>` command, and that `main` is pushed only if every goal passes on Postgres
-- which planning folders will move to the artifacts folder after the first commit
+- the exact `gh repo create <owner>/<slug> --<visibility>` command, and that the generated code is pushed to `main` once its CI checks pass locally
+- that the goals land on branch `bootstrap/<stack id>`, one commit per goal, with a PR into `main` that the user merges
+- which planning folders will move to the artifacts folder after the PR is open
 
 Ask `Create? (y/n)`, unless `approved=yes` was given. On no, report skipped. Nothing is written before the yes.
 
@@ -71,37 +72,48 @@ Ask `Create? (y/n)`, unless `approved=yes` was given. On no, report skipped. Not
 Run the stack file's Source steps. Its output becomes the repo folder.
 If it fails: report `bootstrap-project: failed scaffold: generate <reason>`, and offer to delete what this run made (the repo folder, plus the parent folder if this run created it).
 
-## 5 Create the database
+## 5 Make the first commit
+The generated code goes to `main` as it is, but only once its CI would pass: `main` is pushed next, and its first CI run must be green.
+In the repo folder:
+1. `git init -b main`. The first branch is always `main`.
+2. If the global `git config user.email` is empty, set `user.name` and `user.email` on this repo only, from setup.json `github.login` and `github.email`. Never change the global config.
+3. `git add -A`, then check that nothing like `.env`, `node_modules/` or `.venv/` is staged. If one is, fix `.gitignore` and add again.
+4. If the repo has CI config (`.github/workflows/`, `.gitlab-ci.yml`, `.travis.yml`, `.drone.yml`), read every job and run its steps locally, the way CI runs them: same commands, same containers when a job uses docker compose, no `.env` (CI has none). Lint GitHub workflows with `actionlint`, or `docker run --rm -v $PWD:/repo -w /repo rhysd/actionlint` if it is not installed. Fix what fails with the smallest change, `git add -A` again, and rerun until every job passes. A step that cannot run locally (it needs a secret or a service you cannot start): say which, and rely on the CI run in step 6. If the same job fails three attempts in a row, stop.
+5. `git commit -m "chore: init <slug> from <stack id> stack"`, with no trailers.
+6. Record the repo: status helper `set repo_path=<repo folder>`.
+If CI does not pass: report `bootstrap-project: failed ci: <job> <reason>`. If git fails: report `bootstrap-project: failed git: <reason>`. Either way nothing is pushed and nothing moves.
+
+## 6 Create the GitHub repo and push main
+In the repo folder. On resume, skip each part that is already done.
+1. `gh repo create <owner>/<slug> --<visibility>`, empty: no README, license, `.gitignore`, `--source` or `--push`. The user approved it in step 3; do not ask again.
+2. `git remote add origin <url>`, ssh or https as gh is configured. Check with `git remote -v`. Record it: status helper `set github_url=<url>`.
+3. `git push -u origin main`. Never force. Then `gh repo view <owner>/<slug> --json defaultBranchRef -q .defaultBranchRef.name` must print `main`; if not, `gh repo edit <owner>/<slug> --default-branch main`.
+4. If the stack's CI is GitHub, watch the run on `main`: `gh run watch <run id> --exit-status`, at most 15 minutes. If it fails, read `gh run view <run id> --log-failed`, fix it locally, rerun step 5's CI checks, commit `fix(ci): <what>` and push. Three failed runs: stop. Still running after 15 minutes: say so, give the `gh run list` command, and go on.
+If any of this fails: report `bootstrap-project: failed github: <reason>`. The local commit stays and nothing moves. Running `/bootstrap-project <id>` again resumes here.
+
+## 7 Create the database
 This comes before the goals, because the app cannot start without its database and the goal checks start the app.
 Ask `Create database "<name>" on <host>:<port> as <user>? (y/n)`, unless `db=` was given.
 - **Yes:** follow the stack file's Database section. If the database already exists, ask whether to reuse it or stop. With given answers, reuse it only if it is empty, otherwise fail. Migrations run later, as part of the goals.
 - **No:** skip it and show the commands to create it later. Goals that need the running app are then reported as not verified, and the report line gets `db-skipped`.
 If creating it fails: report `bootstrap-project: failed db: <reason>`. The repo stays and nothing moves.
 
-## 6 Reach every goal
-The stack file's Goals describe the end state. How to get there is your call. Run every check inside the repo folder. A goal's Traps list pitfalls found in earlier runs: advice, not requirements. They save time, but versions change, so check them.
+## 8 Reach every goal, one commit each
+Branch off `main`: `git switch -c bootstrap/<stack id>`. On resume, switch to that branch and skip goals that already have their commit, but still run their verify.
+The stack file's Goals describe the end state. How to get there is your call. Work through them in the stack file's order, and run every check inside the repo folder. A goal's Traps list pitfalls found in earlier runs: advice, not requirements. They save time, but versions change, so check them.
 After each goal, run its verify. Fix and rerun until it passes. If the same goal fails three attempts in a row, stop. Keep each goal's result for the report.
-If you stop: report `bootstrap-project: failed scaffold: <goal> <reason>`. Nothing moves. Offer to delete what this run made: the repo folder, the parent folder and the database if this run created them. A rerun needs a parent folder that passes the rule again.
+When a goal passes, commit it on its own: `git add -A`, check the staged files as in step 5, then `git commit -m "feat: <n> <short name>"`, with no trailers. A fix an earlier goal needs goes into the current goal's commit. A goal with nothing to commit (already met) gets no commit; say so in the PR. A check marked "after this goal's commit" runs right after that commit; a fix for it is amended into the same commit (nothing is pushed yet).
+If you stop: report `bootstrap-project: failed scaffold: <goal> <reason>`. Nothing is pushed and nothing moves. `main`, the GitHub repo and the branch's commits stay; running `/bootstrap-project <id>` again resumes on the branch.
 
-## 7 Make the first commit
-In the repo folder:
-1. `git init -b main`.
-2. If the global `git config user.email` is empty, set `user.name` and `user.email` on this repo only, from setup.json `github.login` and `github.email`. Never change the global config.
-3. `git add -A`, then check that nothing like `.env`, `node_modules/` or `.venv/` is staged. If one is, fix `.gitignore` and add again.
-4. `git commit -m "chore: bootstrap <slug> (<stack id> stack)"`, with no trailers.
-5. Record the repo: status helper `set repo_path=<repo folder>`.
-If any of this fails: report `bootstrap-project: failed git: <reason>`. Nothing moves.
+## 9 Push the branch and open the PR
+1. `git push -u origin bootstrap/<stack id>`. Never force.
+2. `gh pr create --base main --head bootstrap/<stack id> --title "Bootstrap <slug> on the <stack id> stack"`. The body lists every goal, one line each: its commit, and verified or not verified (why). If any goal is not verified, add `--draft`. Record it: status helper `set pr_url=<url>`.
+3. If the stack's CI is GitHub, watch the PR's run as in step 6. Its result counts for the stack's CI goal in the report. If it fails, fix it on the branch in a new commit `fix(ci): <what>` and push. Three failed runs, or still running after 15 minutes: mark that goal not verified, update the PR body and give the `gh run list` command.
+Never merge the PR: the user reviews and merges it.
+If any of this fails: report `bootstrap-project: failed github: <reason>`. Nothing moves. Running `/bootstrap-project <id>` again resumes here.
 
-## 8 Create the GitHub repo and push
-In the repo folder. On resume, skip each part that is already done.
-1. `gh repo create <owner>/<slug> --<visibility>`, empty: no README, license, `.gitignore`, `--source` or `--push`. The user approved it in step 3; do not ask again.
-2. `git remote add origin <url>`, ssh or https as gh is configured. Check with `git remote -v`. Record it: status helper `set github_url=<url>`.
-3. Push only if every goal passed and the database was migrated on Postgres: `git push -u origin main`. Push `main` only, never force. Otherwise do not push: say why, give the push command, and add `not-pushed` to the report line. This keeps a broken first commit off the remote.
-4. If you pushed and the stack's CI is GitHub, watch that run: `gh run watch <run id> --exit-status`, at most 15 minutes. Its result counts for the stack's CI goal in the report. Still running after 15 minutes: mark that goal not verified and give the `gh run list` command.
-If any of this fails: report `bootstrap-project: failed github: <reason>`. The local commit stays and nothing moves. Running `/bootstrap-project <id>` again resumes here.
-
-## 9 Move the planning files
-Only after the first commit exists. Run:
+## 10 Move the planning files
+Only after the PR is open. Run:
 ```
 python3 -I .agents/skills/bootstrap-project/scripts/move-artifacts.py <project folder> <artifacts folder> <repo folder>
 ```
@@ -109,10 +121,10 @@ The script moves only steps that are `done`. A running or pending html-prototype
 - **Exit 3, name clash** (only after an interrupted move, or files the user put in the artifacts folder): nothing was moved. Show the clashing folders, ask the user to move them aside, then run `/bootstrap-project <id>` again; it resumes here. Never merge or overwrite.
 - **Any other error:** report `bootstrap-project: failed move: <script error>`.
 
-## 10 Report
+## 11 Report
 Tell the user:
 - how to run it: the stack file's Run section, with the repo folder filled in
-- the GitHub URL, where the artifacts are, and that status stays in `<project folder>/status.json`
+- the GitHub URL, the PR URL, where the artifacts are, and that status stays in `<project folder>/status.json`
 
 Then a `verified:` list with one line per stack goal: `<n> <short name>: verified`, or `<n> <short name>: not verified (<why>)`. A goal whose check did not run, or ran only partly (no browser, database skipped), is not verified. Never pass a goal silently.
 
@@ -121,15 +133,15 @@ If html-prototype is not `done` or `skipped` yet, add a line: `html-prototype is
 The last line is exactly one of:
 | outcome | line |
 |---|---|
-| done | `bootstrap-project: done <id> <repo_path>`, plus ` db-skipped` if step 5 was skipped and ` not-pushed` if step 8 did not push |
-| failed | `bootstrap-project: failed <scaffold\|db\|git\|github\|move\|prereq>: <reason>` |
+| done | `bootstrap-project: done <id> <repo_path>`, plus ` db-skipped` if step 7 was skipped and ` draft-pr` if the PR is a draft |
+| failed | `bootstrap-project: failed <scaffold\|ci\|db\|git\|github\|move\|prereq>: <reason>` |
 | skipped | `bootstrap-project: skipped <id>` |
 On failure also record it: status helper `step bootstrap status=failed result="<line>"`. Leave the top-level `state` as it is.
 
 ## Never
 - Print or commit passwords or `.env`.
-- Push before every goal passes on Postgres, push other branches, or force push.
+- Push `main` before its CI checks pass locally, push goal work to `main`, push branches other than `main` and `bootstrap/<stack id>`, force push, or merge the PR.
 - Change the global git config.
-- Move planning files before the first commit.
+- Move planning files before the PR is open.
 - Write into a non-empty folder.
 - Edit other steps in status.json. The move script's path rewrite is the only exception.

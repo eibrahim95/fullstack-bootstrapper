@@ -109,7 +109,7 @@ Traps:
 ```
 ls package.json package-lock.json node_modules 2>/dev/null                              # nothing
 grep -rlE '(^|[^/.])\b(npm|npx)\b|node_modules' justfile .github README.md AGENTS.md .zed   # nothing (jsDelivr URLs contain /npm/, which is fine)
-just vendor && git diff --exit-code <pkg>/static/vendor                                  # after the first commit: no diff
+just vendor && git diff --exit-code <pkg>/static/vendor                                  # after this goal's commit: no diff
 ```
 Also: both Unpoly `.map` files are in `static/vendor/` (`ls <pkg>/static/vendor | grep -c '\.map$'` is at least 2), every file in `static/vendor/` is named in the `vendor` recipe, and `just css` plus `just test` pass with every node, npm and npx folder removed from `PATH`.
 
@@ -261,12 +261,12 @@ Traps:
 - Keys from `.env` end up in `os.environ`. `DJANGO_SUPERUSER_*` there breaks the template's `test_createsuperuser_command`; an autouse conftest fixture removes them.
 
 **20. Zed tasks.** `.zed/tasks.json` is committed (`.zed/` is not ignored). One task per local process, each calling its just recipe: Tailwind watch (`just css-watch`), Django server (`just run`), ASGI server (`just asgi`), Celery worker (`just worker`), Celery beat (`just beat`), tests (`just test`). Every task sets `"cwd": "$ZED_WORKTREE_ROOT"`, `"use_new_terminal": true`, `"reveal": "always"`, `"hide": "never"`. Long-running tasks allow concurrent runs; tests do not. Django and Celery tasks read `.env`.
-Check: `jq` parses the file (it is JSONC, strip comments first if any), every task's command is a recipe in `just --summary`, and after `git init`, `git check-ignore --no-index .zed/tasks.json` exits 1.
+Check: `jq` parses the file (it is JSONC, strip comments first if any), every task's command is a recipe in `just --summary`, and `git check-ignore --no-index .zed/tasks.json` exits 1.
 
 ### Quality gates
 **21. Lint and types.** pre-commit hooks are installed and all pass. The built CSS and `<pkg>/static/vendor/` are excluded from pre-commit: its whitespace and end-of-file fixers would rewrite them and break the CI check in goal 23 and the no-diff check in goal 2.
 ```
-git init -q -b main && git add -A && uv run pre-commit install && uv run pre-commit run --all-files   # exit 0 (run once more after autofixes)
+git add -A && uv run pre-commit install && uv run pre-commit run --all-files   # exit 0 (run once more after autofixes)
 uv run mypy <pkg>                                                                                    # no issues
 ```
 
@@ -277,7 +277,7 @@ Traps:
 Check: `just test` shows TOTAL of at least 80, and `uv run coverage report --fail-under=100` fails (proves the gate is real).
 
 **23. Built CSS is committed and CI catches a stale one.** CI (from the `ci` input) runs `uv sync`, `just css`, then `git diff --exit-code <built css>`. No Node setup and no `.env` in CI. If `ci=None`, there is no CI: report this goal as not verified.
-Check: the CI file has that step. After the first commit, `just css && git diff --exit-code <built css>` exits 0. A fresh clone with no `.env` and no node on `PATH` gives no diff after `uv sync` and `just css`. For GitHub, lint the workflow with `actionlint`, or `docker run --rm -v $PWD:/repo -w /repo rhysd/actionlint` if it is not installed; otherwise report not verified.
+Check: the CI file has that step. After this goal's commit, `just css && git diff --exit-code <built css>` exits 0. A fresh clone with no `.env` and no node on `PATH` gives no diff after `uv sync` and `just css`. For GitHub, lint the workflow with `actionlint`, or `docker run --rm -v $PWD:/repo -w /repo rhysd/actionlint` if it is not installed; otherwise report not verified.
 
 Traps:
 - CI's `uv sync` builds `psycopg[c]`, so the job installs `libpq-dev`. CI must run `uv sync` before `just css`, or the `@source` path into site-packages is empty.
@@ -285,7 +285,7 @@ Traps:
 ### Repo files
 **24. `.gitignore`.** Ignores `.env`, `.venv`, `db.sqlite3` and the Tailwind binary cache `.django_tailwind_cli/`. Does not ignore the built CSS, `static/vendor/` or `.zed/`: those are committed (goals 2, 20, 23).
 ```
-git init -q -b main && git check-ignore --no-index <each ignored path> | wc -l    # equals the number of paths
+git check-ignore --no-index <each ignored path> | wc -l    # equals the number of paths
 git check-ignore --no-index <built css> <pkg>/static/vendor/<a file>              # exits 1
 ```
 
