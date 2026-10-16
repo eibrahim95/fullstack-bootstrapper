@@ -14,7 +14,7 @@ A server-rendered Django app that feels like a single-page app, ready to deploy 
 | Postgres, Redis | run on the host, from /setup. Redis serves cache, Celery and Channels. |
 
 The base is the output of cookiecutter-django. The agent then adapts it until every goal below passes.
-Tools needed: cookiecutter, uv, just, curl, a running Docker daemon. Network: GitHub, PyPI, jsDelivr, Docker Hub.
+Network: GitHub, PyPI, jsDelivr, Docker Hub.
 
 ## Names used below
 | name | means |
@@ -24,6 +24,15 @@ Tools needed: cookiecutter, uv, just, curl, a running Docker daemon. Network: Gi
 | `<parent>`, repo folder | the parent folder the user chose, and `<parent>/<slug>` |
 | setup.json | `.bootstrap/setup.json` in the bootstrapper repo (Postgres, Redis, GitHub account) |
 | `<x>` | the answer to input `x` from the table below |
+
+## Tools
+bootstrap-project checks each row before showing the plan. If a check fails, it stops with `failed prereq` and suggests the fix.
+| tool | check | fix |
+|---|---|---|
+| uv | `command -v uv` | `/ensure-installed uv` |
+| just | `command -v just` | `/ensure-installed just` |
+| curl | `command -v curl` | install curl with the system package manager |
+| docker | `docker info` | /ensure-runnable-docker |
 
 ## Inputs
 bootstrap-project asks these in its one question round, each with the recommendation shown. When /project passes them as `key=value`, use them as given. If a row without a default is missing from a background call, report `failed prereq`.
@@ -43,13 +52,13 @@ bootstrap-project asks these in its one question round, each with the recommenda
 
 ## Source: how the repo is generated
 1. Docker must run: cookiecutter's post-generation hook resolves the Python dependencies inside a Docker image. If `docker info` fails, stop and tell the user to run /ensure-runnable-docker.
-2. Use a temporary cookiecutter config, so the user's own `~/.cookiecutters` and `~/.cookiecutter_replay` stay untouched:
+2. cookiecutter is not installed: `uvx` runs it in a throwaway environment, so it needs only uv. Use a temporary cookiecutter config, so the user's own `~/.cookiecutters` and `~/.cookiecutter_replay` stay untouched:
    ```
    T=$(mktemp -d) && printf 'cookiecutters_dir: %s/c\nreplay_dir: %s/r\n' $T $T > $T/c.yaml
    ```
 3. Generate:
    ```
-   cookiecutter --config-file $T/c.yaml --no-input -o <parent> https://github.com/cookiecutter/cookiecutter-django \
+   uvx cookiecutter --config-file $T/c.yaml --no-input -o <parent> https://github.com/cookiecutter/cookiecutter-django \
      project_name="<title>" project_slug=<pkg> description="<description>" author_name="<author>" email=<email> \
      domain_name=<domain> open_source_license="<license>" username_type=<username> postgresql_version=<pg> \
      mail_service="<mail>" rest_api="<api>" ci_tool=<ci> \
@@ -288,6 +297,13 @@ PGPASSWORD="$(jq -r .postgres.password <setup.json>)" psql -h "$(jq -r .postgres
   -U "$(jq -r .postgres.username <setup.json>)" -d postgres -tAc "select 1 from pg_database where datname='<pkg>'"
 ```
 Create it with the same command and `-c 'CREATE DATABASE "<pkg>"'`. Then `just migrate` on Postgres must report all migrations OK. Tests keep using SQLite from `test.py`.
+
+## Run
+bootstrap-project shows these in its report, with the repo folder filled in:
+- `cd <repo folder> && just run`
+- websockets: `just asgi` (port 8001)
+- background jobs: `just worker` and `just beat`
+- styles: `just css-watch`
 
 ## Later: turning the HTML prototype into the app
 Not part of bootstrap. The HTML prototype is throwaway. It shares the look, not the plumbing: plain links, no Unpoly, no cotton or unicorn markers.

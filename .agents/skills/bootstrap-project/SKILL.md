@@ -10,14 +10,14 @@ Last step of the project pipeline. Creates the app's git repo from a stack in th
 |---|---|
 | project folder | `.bootstrap/projects/<id>/`, `<id>` = two digits like `01` |
 | setup.json | `.bootstrap/setup.json`: Postgres, Redis and GitHub account from /setup. Holds passwords: never print, paste into chat, or commit them. |
-| status helper | `python3 -I .agents/skills/project/scripts/status.py <project folder>`. The only way to write `status.json`: `step bootstrap key=value ...` updates this step, `set key=value` sets a top-level key. It locks the file, because the html-prototype thread writes it at the same time. Never edit `status.json` by hand. |
+| status helper | `python3 -I .agents/skills/project/scripts/status.py <project folder>`. The only way to write `status.json`: `step bootstrap key=value ...` updates this step, `set key=value` sets a top-level key. It locks the file, because the html-prototype top-level thread writes it at the same time. Never edit `status.json` by hand. |
 | parent folder | folder the user picks for this project only. Holds the repo and the artifacts. |
 | repo folder | `<parent folder>/<slug>`: the new git repo |
 | artifacts folder | `<parent folder>/artifacts`: where planning files move to |
 | stack file | `references/stacks/<file>` named in the registry row of the chosen stack |
 
 ## Called from /project
-/project usually runs this skill in a background thread, with every answer in the prompt: `parent=`, `slug=`, `stack=`, `owner=`, `visibility=`, one `key=value` per row of the stack file's Inputs table, `db=yes|no`, `approved=yes`.
+/project usually runs this skill in a top-level thread, with every answer in the prompt: `parent=`, `slug=`, `stack=`, `owner=`, `visibility=`, one `key=value` per row of the stack file's Inputs table, `db=yes|no`, `approved=yes`.
 Use given answers and never ask again: nobody is watching that thread. Every check below still applies. If a given answer fails a check, report failed instead of asking.
 
 ## 1 Pick the project and check prerequisites
@@ -28,8 +28,6 @@ Stop with `failed prereq` and tell the user what to run when:
 |---|---|
 | wireframes step is not `done` (or is `skipped` but journeys is not `done`) | `/draw-wireframes <id>` or the earlier step named |
 | setup.json lacks `postgres`, `redis` or `github` | /setup |
-| `command -v cookiecutter` finds nothing | `/ensure-installed cookiecutter` |
-| `docker info` fails | /ensure-runnable-docker |
 | `gh auth status` fails | /ensure-git |
 
 The html-prototype step may be in any state. It runs in parallel; never wait for it.
@@ -56,10 +54,12 @@ Then check two rules. If either fails, say why and ask again:
 
 When resuming, skip both rules: the repo and folder are ours already.
 
+Then run every check in the chosen stack file's Tools section. If one fails, stop with `failed prereq` and suggest that row's fix.
+
 ## 3 Show the plan and get a yes
 Read the stack file. Show the user:
 - the parent folder, and whether it will be created or reused
-- the cookiecutter command from the stack file's Source section, filled with the answers
+- the generate command(s) from the stack file's Source section, filled with the answers
 - the stack's goals, one line each
 - the database name from the stack file's Database section, and the Postgres host, port and user from setup.json
 - the exact `gh repo create <owner>/<slug> --<visibility>` command, and that `main` is pushed only if every goal passes on Postgres
@@ -111,7 +111,7 @@ The script moves only steps that are `done`. A running or pending html-prototype
 
 ## 10 Report
 Tell the user:
-- how to run it: `cd <repo folder> && just run`, websockets with `just asgi` (port 8001), background jobs with `just worker` and `just beat`, styles with `just css-watch`
+- how to run it: the stack file's Run section, with the repo folder filled in
 - the GitHub URL, where the artifacts are, and that status stays in `<project folder>/status.json`
 
 Then a `verified:` list with one line per stack goal: `<n> <short name>: verified`, or `<n> <short name>: not verified (<why>)`. A goal whose check did not run, or ran only partly (no browser, database skipped), is not verified. Never pass a goal silently.
