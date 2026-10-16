@@ -6,14 +6,15 @@ For each screen, run these checks. A check you did not run is "not verified". Ne
 
 1. **Coverage.** Does the screen show every region and variant the inventory lists for it (`regions` and `variants` in `screen-inventory.json`)? Does it honor every rule in its `notes`? Does placement match the wireframe (`WIREFRAMES/<id>.html`: phone frame, desktop frame, states), or a deviation logged in `NOTES.md`? List the missing items.
 2. **Links.** Does every entry and exit link in `assets/link-map.json` exist and point at a real file? Does every button that should navigate do so?
-3. **Stack.** Basecoat classes used, not hand-rolled equivalents? Unpoly attributes on navigation? Alpine for widgets? Page opens standalone?
-4. **CSS rule.** Run `grep -nE '<style|style=' <files>`. Report every hit. Ignore the region between `<!-- tokens:start -->` and `<!-- tokens:end -->`, and check that it matches `assets/tokens.css`. Only the data-driven colour binding is allowed otherwise. Report any hand-named class.
+3. **Stack.** Basecoat classes used, not hand-rolled equivalents? Page opens from disk over `file://`? Dialogs match their `fragments/` source? No Unpoly, no Django markers.
+4. **CSS rule.** Run `grep -nE '<style|style=' <files>`. Report every hit. Ignore the region between `<!-- theme:start -->` and `<!-- theme:end -->`, and check that it matches `assets/theme.css`. Only the data-driven colour binding is allowed otherwise. Report any hand-named class.
 5. **Detector.** Run `impeccable detect <files>`. Paste the output. Report each finding with its screen ID.
 6. **Consistency.** Same shell, data, and names as the reference screen and `data.js`?
 7. **Responsive.** Read the sweep images in `screenshots/sweep/` and `screenshots/sweep/sweep-report.json`. The orchestrator produced them for widths from about 320 px to 1920 px, plus portrait and landscape phone sizes. Do not run a browser yourself. Report, with the width where each appears:
    - horizontal page scroll
    - overflow, overlap, squeezed or stretched components
-   - tap targets under 44 px
+   - tap targets under 44 px below 768 px; targets under 24 px from 768 px
+   - desktop density at 1440 px: body text over 16 px, typical controls taller than 40 px, or a layout that looks like a scaled-up phone
    - fixed bars that ignore safe-area insets
    - hover-only features
    - desktop-first code (max-width overrides that undo a desktop layout)

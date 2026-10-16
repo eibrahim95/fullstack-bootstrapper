@@ -290,11 +290,9 @@ PGPASSWORD="$(jq -r .postgres.password <setup.json>)" psql -h "$(jq -r .postgres
 Create it with the same command and `-c 'CREATE DATABASE "<pkg>"'`. Then `just migrate` on Postgres must report all migrations OK. Tests keep using SQLite from `test.py`.
 
 ## Later: turning the HTML prototype into the app
-Not part of bootstrap. The HTML prototype is throwaway, but its markers map to the app:
+Not part of bootstrap. The HTML prototype is throwaway. It shares the look, not the plumbing: plain links, no Unpoly, no cotton or unicorn markers.
 | prototype | app |
 |---|---|
-| `<!-- c-component: x -->` block | `templates/cotton/x.html` |
-| `<!-- unicorn: x -->` block | unicorn component `x` (drop the Alpine fake) |
-| `<!-- server: for ... -->` | view context |
-| `up-*` attributes | carry over as they are |
-| prototype design tokens | `@theme {}` in the Tailwind input CSS |
+| `assets/app.css` token values (`:root`, `.dark`) | same variables in the Tailwind input CSS |
+| `assets/theme.css` `@theme inline` block | `@theme inline {}` in the Tailwind input CSS |
+| Basecoat markup | cotton components, django-basecoat |

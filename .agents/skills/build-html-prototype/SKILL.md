@@ -4,7 +4,7 @@ description: Build clickable HTML prototype from spec, journeys, screen inventor
 ---
 # build-html-prototype
 
-Static clickable prototype. Replaces Figma. User opens `OUT/index.html`, clicks every inventory screen. Look matches real stack (README `django+unpoly`: Django, django-cotton, Unpoly, Alpine.js, django-basecoat, django-unicorn for high-interactivity parts, Tailwind).
+Static clickable prototype. Replaces Figma. User opens `OUT/index.html` straight from disk, no server, clicks every inventory screen. Looks like the real app: Basecoat components and tokens, Tailwind utilities. Plumbing is free: plain links, Alpine or plain JS. No Unpoly, no Django markers (`brief/stack.md`).
 **You write no code.** Plan, spawn subagents, route findings, run commands, write Markdown. Read this file, `references/foundation.md`, `references/integration.md`, all of `references/brief/` before acting.
 
 ## 0 project
@@ -15,7 +15,7 @@ Own step `running`: another thread owns it. Say so, show `thread` from step, sto
 Runs in parallel with /bootstrap-project. It needs nothing from bootstrap, and never waits for it.
 
 ## inputs
-/project hands this skill to a background thread and puts the answers in the prompt: `models=<implementer>,<reviewer>`, `out=archive|wipe|stop` (only if `OUT` exists). Supplied: use, never ask. Not supplied: ask as below.
+/project hands this skill to a background thread and puts the answers in the prompt: `models=<implementer>,<reviewer>`, `out=archive|wipe|stop` (only if `OUT` exists), `design=roll` or `design="<user direction>"`. Supplied: use, never ask. Not supplied: ask as below. `design` not supplied: background run = `roll`; attended run = ask once, recommend `roll`.
 
 Paths, absolute in every subagent brief (subagents share no shell vars):
 | Name | Value |
@@ -48,7 +48,7 @@ Inventory decides which screens exist and where each links. Journey disagrees: f
 | May | May not |
 |---|---|
 | Spawn and message subagents | Create or edit `.html`, `.css`, `.js`, `.json`, `.py`, `.sh` |
-| Run commands: downloads, `python3 -m http.server`, headless browser, `impeccable detect`, tools a subagent wrote | Fix a subagent's code, even one line |
+| Run commands: downloads, headless browser, `impeccable detect`, tools a subagent wrote | Fix a subagent's code, even one line |
 | Write Markdown: `README.md`, `NOTES.md` | Write a script. Ask lead-model agent. |
 | Send findings to the agent owning the file | Reassign a file mid-phase without noting in `NOTES.md` |
 
@@ -62,13 +62,19 @@ All `subagent_type: general-purpose`; state role in the brief. No role-typed age
 Reviewers report and fix nothing. Designer and reviewer run no browser: you run screenshot script, give output.
 
 ## design: use impeccable
-`impeccable`: `shape`, `critique`, `audit`, `clarify`, `onboard`, `harden`. Run every command with `OUT` as cwd.
+`impeccable` flows `init`, `shape`, `critique`, `audit`, `clarify`, `onboard`, `harden` are reference files, not CLI verbs: "run `impeccable <flow>`" in this skill means follow `${IMPECCABLE}/reference/<flow>.md`. Real CLI: `${IMPECCABLE}/scripts/impeccable detect|concept-seed`. Work with `OUT` as cwd.
 - Design agents (lead model): load skill via Skill tool, else read `${IMPECCABLE}/SKILL.md`.
 - Builders, reviewers: no full skill. Read `PRODUCT.md`, `DESIGN.md`, `${IMPECCABLE}/reference/craft-floor.md` by path, run `impeccable detect <files>`. Put resolved craft-floor path in each brief.
-- `PRODUCT.md`, `DESIGN.md` live in `OUT` root. They win over the skill.
+- `PRODUCT.md`, `DESIGN.md` live in `OUT` root. They win over the skill, except the direction rule below.
 - Verify in bounded passes, not loops. Use caps below.
-Fixed pressure: read PRD problem, name what current alternatives get wrong; prototype answers that first. Modern, calm, focused. Mobile first, fluid (`brief/responsive.md`). WCAG AA contrast, visible focus. Light and dark via Basecoat tokens.
-Free: accent colour, font pairing, radius, spacing rhythm, look of main entity visual, signature moment, small delights. Write three choices in `DESIGN.md`: accent, font pairing, signature element. Real copy only. No progress ring as signature (craft floor lists it as default to avoid).
+Fixed pressure: read PRD problem, name what current alternatives get wrong; prototype answers that first. Mobile first, desktop dense (`brief/responsive.md`). WCAG AA contrast, visible focus. Light and dark via Basecoat tokens.
+Direction (visual world, palette, type, signature) comes from one source only:
+- `design="<user direction>"`: the user's words are the pin. Build them. Fill gaps by impeccable's rules.
+- `design=roll`: `concept-seed` assigns it (`references/foundation.md` 2a). Background run builds the assigned direction, never re-rolls on taste. Attended run shows the assigned direction to the user, who accepts or re-rolls.
+- Never: the designer's own top pick, a direction you or the orchestrator write into a brief, or "the opposite of the last run". A previous `OUT` or `OUT.prev-*` is not input to the direction.
+- PRD analogies and competitor descriptions ("a book on a desk") are product facts, not visual metaphors.
+- A face on impeccable's training-data defaults list (`${IMPECCABLE}/reference/new-work.md`, Commit the world) needs a written reason other than subject association. App screens may use one workhorse UI face for everything.
+Write three choices in `DESIGN.md`: accent, font pairing, signature element. Real copy only. No progress ring as signature (craft floor lists it as default to avoid).
 
 ## 2 foundation
 Read `references/foundation.md`. Run 2a designer, 2b builder, 2c gate, in sequence, lead model. No Step 3 until no blocker or major.

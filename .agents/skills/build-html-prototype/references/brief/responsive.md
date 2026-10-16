@@ -9,7 +9,7 @@ Build the phone layout first. Add complexity as space grows. Do not design for d
 3. Keep breakpoints few. Use Tailwind defaults unless a screen needs another. Say so in an HTML comment.
 4. Let layouts flow without breakpoints where possible: CSS Grid `auto-fit` with `minmax()`, flexible `gap`, `max-w` on reading text, `fr` or percent widths. Avoid fixed pixel widths on containers.
 5. Use container queries (`@container`) for components that live in different places, such as a card in a narrow column and in a wide grid. Use media queries only for page structure: navigation, sidebar, column count.
-6. Use fluid type with `clamp()` and a `rem` term. Keep body text at least `1rem`. Do not set a font size per breakpoint.
+6. Body and UI text are fixed sizes, not fluid: controls, labels, navigation, metadata `text-sm` (14 px); body text `text-sm` or `text-base` (16 px); long-form reading text may be larger. Fluid `clamp()` with a `rem` term only for display headings. Do not change the root font size.
 7. Test from about 320 px to about 1920 px, including in-between widths. No horizontal page scroll at any width. Only a code block or a wide table may scroll sideways, inside its own container.
 8. Check portrait and landscape on a phone-sized window.
 
@@ -17,7 +17,7 @@ Build the phone layout first. Add complexity as space grows. Do not design for d
 
 - **Navigation.** Bottom bar on small screens. Sidebar when there is room. Pad the bottom bar with `env(safe-area-inset-bottom)`. Use `viewport-fit=cover`.
 - **Thumb reach.** Put primary actions (continue, save, upload, pay) in the lower part of the screen. Keep precise actions out of the top corners.
-- **Touch targets.** At least 44 × 44 px. Use 48 px or more for primary actions. At least 8 px between targets. Padding may extend the tap area.
+- **Touch targets.** Below `md` (768 px), or under `pointer-coarse:`: at least 44 × 44 px, 48 px or more for primary actions, at least 8 px between targets. From `md` with a fine pointer: desktop size, at least 24 × 24 px (WCAG 2.5.8), Basecoat's default control height (36 px) for most controls. Pattern: `min-h-11 md:min-h-9`. Padding may extend the tap area.
 - **Edges.** Side gutter of at least 16 px on all content. Controls at least 16 px from the screen edge.
 - **Progressive disclosure.** Show the most important content first on small screens. Move the rest into a drawer, sheet, accordion, or tab.
 - **Forms.** One column on small screens. Full-width inputs with clear labels. Use the right `type` and `inputmode`.
@@ -26,6 +26,10 @@ Build the phone layout first. Add complexity as space grows. Do not design for d
 - **Content-heavy and canvas screens.** A reading or editing surface fits the screen width and keeps controls out of the way. Touch must work on any drawing or drag surface. Its toolbar stays in thumb reach. A phone shows one pane. A wide screen may add a side panel.
 - **Media.** `max-width: 100%` and `aspect-ratio`, so nothing jumps on load.
 - **Preferences.** Respect `prefers-reduced-motion`. Start from `prefers-color-scheme`.
+
+## Desktop density
+
+From `lg` up the screen reads as a desktop app, not a phone scaled up: Basecoat default control sizes, `text-sm` chrome, tighter vertical rhythm, and more content in the first viewport. A list shows about ten rows at 1440 × 900. Check it on the 1440 px screenshot.
 
 ## Document it
 

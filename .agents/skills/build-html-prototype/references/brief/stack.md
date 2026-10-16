@@ -1,89 +1,59 @@
 # Stack and build rules (every agent reads this)
 
-The real product uses Basecoat (django-basecoat), Tailwind, Unpoly, Alpine, django-cotton, and a server-side layer (Django, django-unicorn for high-interactivity parts only). A browser cannot run the server parts. The prototype uses the front-end layer and fakes the server layer.
+The prototype must look like the real app, not run like it. The real product uses Basecoat (django-basecoat) and Tailwind for its look. The prototype uses the same two, so components and tokens carry over. How pages link and how widgets work is free: the simplest thing that runs from disk. Do not use Unpoly. Do not imitate Django, django-cotton, or django-unicorn.
 
-| Piece | Real role | Use here |
-|-------|-----------|----------|
-| Basecoat, via django-basecoat (shadcn-style CSS) | Component look: buttons, cards, inputs, badges, dialogs, tabs, sidebar | Use directly. Use its class names and tokens. |
-| Tailwind CSS v4 | Utilities and tokens | Browser build, vendored. |
-| Unpoly v3 | Navigation without reloads, modals, drawers, partial updates | Use directly. Rules below. |
-| Alpine.js v3 | Small client state: toggles, tabs, drawers, forms | Use for every interactive widget. |
-| django-cotton | Reusable template components | Cannot run. Use the comment convention below. |
-| Django templates | Server-rendered pages and state | Cannot run. Use `assets/data.js` and the server markers below. |
-| django-unicorn | Live server-held state for high-interactivity parts only | Cannot run. Fake with Alpine and the unicorn marker below. |
+| Piece | Use here |
+|-------|----------|
+| Basecoat CSS and JS (shadcn-style) | Required. Use its class names and tokens for buttons, cards, inputs, badges, dialogs, tabs, sidebar. |
+| Tailwind CSS v4 | Required. Browser build, vendored. |
+| Alpine.js v3 | Vendored. Use for state and widgets, or plain JS where simpler. |
+| Navigation | Plain `<a href>` links between full pages. |
 
 ## Libraries and fonts
 
 Download every library and font once into `assets/vendor/`. Load with relative paths so the prototype works offline.
 
-- Libraries: Tailwind browser build (v4), Basecoat CSS and JS, Unpoly (v3 JS and CSS), Alpine.js (v3).
-- Fonts: the families chosen in `DESIGN.md`. Use at most two. Download `woff2` files into `assets/vendor/fonts/`. Declare them with `@font-face` in `assets/app.css`.
+- Libraries: Tailwind browser build (v4), Basecoat CSS and JS, Alpine.js (v3).
+- Fonts: the families chosen in `DESIGN.md`. Use at most two. App screens may use one workhorse UI face for everything. Download `woff2` files into `assets/vendor/fonts/`. Declare them with `@font-face` in `assets/app.css`.
 - Download each file with a real request. Check that it is not an HTML error page. If a path fails, search for the correct path. Do not invent one.
-- Do not load anything from a CDN at run time. Do not use a system display font as the display voice.
+- Do not load anything from a CDN at run time.
 
-## Serving
+## Opening
 
-Unpoly loads pages with `fetch`. Browsers block `fetch` on `file://`. Run:
-
-```bash
-cd <output-dir> && python3 -m http.server 8080
-```
+Every page opens over `file://`. No server, no `fetch`, no ES module imports. Data comes from `<script src="assets/data.js">`.
 
 ## CSS rule (strict)
 
 No custom CSS in any screen or fragment.
 
 - Style only with Tailwind utility classes and Basecoat classes.
-- Forbidden in `screens/` and `fragments/`: `<style>` blocks, `style="…"` attributes, and hand-named classes. The token-block fallback below is the only exception to the `<style>` ban.
+- Forbidden in `screens/` and `fragments/`: `<style>` blocks, `style="…"` attributes, and hand-named classes. The theme block below is the only exception to the `<style>` ban.
 - One exception: data-driven colours, such as entity images or avatars. Bind them with Alpine, for example `:style="{'--c1': item.c1, '--c2': item.c2}"`. Style them with utilities such as `bg-linear-to-br from-(--c1) to-(--c2)`.
-- `assets/app.css` is the only CSS file, apart from `assets/tokens.css` when the fallback below is in use. It holds design tokens, `@font-face`, Basecoat token overrides, and keyframes declared in the theme. Only an agent in the 2a role edits it. Tokens are frozen after Step 2.
-- Tailwind's browser build compiles inline `<style type="text/tailwindcss">` blocks. It may not compile a linked file. Verify this against the pinned version. The design agent records the working token mechanism in `DESIGN.md`.
-- Fallback, only if the browser build cannot read `assets/app.css`: the design agent writes the token block once in `assets/tokens.css`. Every page carries one identical copy of it in a `<style type="text/tailwindcss">` element. The markers `<!-- tokens:start -->` and `<!-- tokens:end -->` wrap the whole element. Builders paste it unchanged. The CSS checks ignore that marked region. Nothing else may use `<style>`.
-- Container queries use Tailwind's `@container` and `@md:` variants. Fluid type uses `text-[clamp(…)]` with a `rem` term, or a theme token.
+- Only an agent in the 2a role edits `assets/app.css` and `assets/theme.css`.
+
+## Tokens: values in one file
+
+Tailwind's browser build compiles only inline `<style type="text/tailwindcss">` blocks, not linked files. Basecoat and Tailwind read CSS variables at run time. So:
+
+- `assets/app.css` (linked by every page) holds every token value: colours, radius, font families, type sizes, on `:root` and `.dark`. Plus `@font-face`, Basecoat overrides, keyframes. A design change edits this file only.
+- `assets/theme.css` holds one `@theme inline { … }` block that maps Tailwind names to those variables, for example `--color-page: var(--page);` and `--text-display: var(--text-display);`. Only `var(--x)` values, never a literal. It changes only when a token name is added.
+- Every page carries one identical copy of `theme.css` inside `<style type="text/tailwindcss">`, wrapped in `<!-- theme:start -->` and `<!-- theme:end -->`. Builders paste it unchanged. The CSS checks ignore that marked region.
+- Container queries use Tailwind's `@container` and `@md:` variants. Type sizes follow `brief/responsive.md`.
 - If you need a style that no utility or Basecoat class gives, report it. Do not write CSS.
 
-## Unpoly rules
+## Pages, dialogs, history
 
-- Every page is a full valid HTML document. It also works when opened at its own URL.
-- Navigation uses `<a up-follow href="…">`. Use `up-target` so only the main content swaps. The shell stays in place.
-- Modals, drawers, sheets, and confirm dialogs use `up-layer="new modal"` or `up-layer="new drawer"`. Point them at a page in `fragments/`.
+- Every page is a full valid HTML document with the same shell.
+- Navigation is `<a href="…">` to another page. The browser back button is the history.
+- Modals, drawers, sheets, and confirm dialogs use Basecoat dialog or sheet markup inside the page that opens them, opened with Alpine or the native `<dialog>` API. Copy the markup from `fragments/`, unchanged except for data.
 - Use a modal only for a task that needs interruption or protected focus (confirm, limit reached, payment). Use a sheet, drawer, or inline panel for the rest.
-- Use `up-history` so the back button works.
-- Do not write a router. Do not use `window.location` for navigation. The sign-in resume demo is the only exception.
+- Do not write a router.
 
 ## Alpine rules
 
 - Use `x-data` for local state. Use `x-show`, `x-model`, `@click`, `x-for`.
 - Fake server state lives in `assets/data.js`. Prototype controls live in the store described in `data-spec.md`.
 - Small inline `<script>` blocks for Alpine data are fine. No build step.
-
-## Component convention (replaces django-cotton)
-
-Mark each reusable piece with a comment so a developer can turn it into a Cotton component later:
-
-```html
-<!-- c-component: entity-card  props: item -->
-<article class="card"> … </article>
-<!-- /c-component -->
-```
-
-Mark each repeated piece. The repeated pieces are the app shell, page header, empty state, banner, progress indicator, and the card for each main entity in the PRD. Repeat the markup in each page. Do not build a runtime include system.
-
-Mark a high-interactivity widget (live server state, many interdependent fields, polling) that would become a django-unicorn component. Fake it with Alpine:
-
-```html
-<!-- unicorn: live-counter  state: count  actions: increment -->
-<div x-data="{ count: 0 }"> … </div>
-<!-- /unicorn -->
-```
-
-## Server markers
-
-Where the real product renders data on the server, add a one-line comment above the block, and render it from `data.js` with `x-for`:
-
-```html
-<!-- server: for item in recent_items -->
-```
 
 ## Rules for every agent
 
