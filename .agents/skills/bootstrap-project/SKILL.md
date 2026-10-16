@@ -18,7 +18,7 @@ Last step of the project pipeline. Creates the app's git repo from a stack in th
 
 ## Called from /project
 /project usually runs this skill in a top-level thread, with every answer in the prompt: `parent=`, `slug=`, `stack=`, `owner=`, `visibility=`, one `key=value` per row of the stack file's Inputs table, `db=yes|no`, `approved=yes`.
-Use given answers and never ask again: nobody is watching that thread. Every check below still applies. If a given answer fails a check, report failed instead of asking.
+Use given answers and never ask again: nobody is watching that thread. Every check below still applies. If a given answer fails a check, report failed instead of asking. If an answer with no default is missing, report `failed prereq`.
 
 ## 1 Pick the project and check prerequisites
 Which project: the argument (`01` or the slug). No argument: if exactly one project is not bootstrapped yet, use it; if several, list id, title and state and ask; if none, tell the user to run /new-project.
@@ -79,7 +79,7 @@ Ask `Create database "<name>" on <host>:<port> as <user>? (y/n)`, unless `db=` w
 If creating it fails: report `bootstrap-project: failed db: <reason>`. The repo stays and nothing moves.
 
 ## 6 Reach every goal
-The stack file's Goals describe the end state. How to get there is your call. Its Hints list traps found in earlier runs: they save time, but versions change, so check them.
+The stack file's Goals describe the end state. How to get there is your call. Run every check inside the repo folder. A goal's Traps list pitfalls found in earlier runs: advice, not requirements. They save time, but versions change, so check them.
 After each goal, run its verify. Fix and rerun until it passes. If the same goal fails three attempts in a row, stop. Keep each goal's result for the report.
 If you stop: report `bootstrap-project: failed scaffold: <goal> <reason>`. Nothing moves. Offer to delete what this run made: the repo folder, the parent folder and the database if this run created them. A rerun needs a parent folder that passes the rule again.
 
