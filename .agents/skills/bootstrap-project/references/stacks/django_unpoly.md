@@ -85,9 +85,32 @@ Postgres is always on; the template has no switch for it.
 | `compose/production/django/` (Dockerfile, `start`, Celery scripts) | keep. A later deploy step adapts it for Cloud Run; bootstrap does not. |
 | compose recipes in the justfile | keep, and add host recipes next to them |
 
-## Goals
-Tests always run on `config.settings.test` (SQLite), so they need no Postgres or Redis. Checks that start the app (`just run`, `just asgi`, `just worker`) need the database created and migrated.
+## Baseline: in the first commit
+These go into the first commit on `main`, so its first CI run is green on plain uv, with no Docker. Everything else waits for the Goals branch.
 Traps last verified 2026-10-11 with cookiecutter-django 4b9d477, Python 3.14.0, django-unicorn 0.67.0, Unpoly 3.14.3, Alpine 3.17.4, basecoat-css 0.3.11, Tailwind 4.3.3, django-tailwind-cli 4.8.1, Channels 4.3.2.
+
+**B1. CI without Docker.** The template's tests already run on Postgres from the environment; only its CI runs them through Docker Compose. CI (from the `ci` input) keeps the template's linter job, which needs no Docker, and its pytest job runs `uv run pytest` directly on the runner. Every other generated file stays as it is: settings, `pyproject.toml`, migrations. The workflow sets `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER` and `POSTGRES_PASSWORD` once, at workflow level, for the runner's Postgres. The pytest job starts that Postgres, installs `libpq-dev`, installs uv and runs pytest; no `makemigrations` or `migrate` step (pytest-django creates `test_<db>` itself). No Docker, compose, `services:` containers or `.env`. If `ci=None`, there is no CI: report this goal as not verified.
+```
+git diff --stat <generated tree>                                                              # only the CI file
+grep -niE 'docker|compose|services:|\.envs' <CI file>                                        # nothing
+POSTGRES_HOST="$(jq -r .postgres.host <setup.json>)" POSTGRES_PORT="$(jq -r .postgres.port <setup.json>)" POSTGRES_USER="$(jq -r .postgres.username <setup.json>)" \
+  POSTGRES_PASSWORD="$(jq -r .postgres.password <setup.json>)" POSTGRES_DB=<pkg> REDIS_URL=redis://127.0.0.1:1/0 uv run pytest   # the pytest job, run on setup.json's Postgres
+```
+For GitHub, lint the workflow with `actionlint`, or `docker run --rm -v $PWD:/repo -w /repo rhysd/actionlint` if it is not installed.
+
+Traps:
+- GitHub's `ubuntu-latest` image ships PostgreSQL with the service stopped: `sudo systemctl start postgresql.service`, then `sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres'"`, because TCP logins on the runner need a password. Its major version is whatever the image ships, which may differ from the `pg` input.
+- The image has no `libpq-dev`, and `uv sync` builds `psycopg[c]` from source: `sudo apt-get update && sudo apt-get install -y libpq-dev` before uv runs.
+- `makemigrations --check` loads local settings, which need `USE_DOCKER`; leave it out.
+
+**B2. pre-commit installed.** The git hook is installed and every hook passes on all files.
+```
+uv run pre-commit install && git add -A && uv run pre-commit run --all-files   # exit 0 (run once more after autofixes)
+test -x .git/hooks/pre-commit                                                    # exit 0
+```
+
+## Goals
+Tests always run on `config.settings.test`: Postgres from `.env`, no Redis. Checks that start the app (`just run`, `just asgi`, `just worker`) need the database created and migrated.
 
 ### Dependencies
 **1. Python packages.** `pyproject.toml` and `uv.lock` have django, django-cotton, django-basecoat, django-unicorn, unpoly, celery, channels, channels-redis, django-storages, uvicorn and django-tailwind-cli. Python stays at the template's pinned version.
@@ -123,18 +146,19 @@ uv run python manage.py shell -c "from django.conf import settings as s; from dj
 # expect: True, the unpoly middleware, /unicorn/message, alpine, config.asgi.application, RedisChannelLayer
 ```
 
-**4. Database and Redis come from the environment.** `.env` is read by default, and real environment variables win over it. The local cache is Redis from `REDIS_URL` (the template's local settings use an in-memory cache). Host, port and user match setup.json; the database name is `<pkg>`.
-There is no SQLite fallback: if the database variables are missing, settings fail loudly. Only `config/settings/test.py` uses SQLite, hardcoded as `{"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}` with `BASE_DIR` imported by name (no `# noqa`). Test settings also set `ALLOWED_HOSTS = ["testserver"]`, an in-memory cache, `InMemoryChannelLayer`, and Celery running tasks inline.
+**4. Database and Redis come from the environment.** `.env` is read by default, and real environment variables win over it. The local cache is Redis from `REDIS_URL`, set in `config/settings/local.py` where the template had an in-memory cache, so test settings never inherit it. Host, port and user match setup.json; the database name is `<pkg>`.
+There is no fallback database: if the database variables are missing, settings fail loudly. Tests keep the template's database settings, so they read the same keys. Test settings add `ALLOWED_HOSTS = ["testserver"]`, `InMemoryChannelLayer`, and Celery running tasks inline. They set no `CACHES`.
 ```
 uv run python manage.py shell -c "from django.conf import settings as s; from urllib.parse import urlsplit as u; d=s.DATABASES['default']; r=u(s.CACHES['default']['LOCATION']); print(d['HOST'], d['PORT'], d['USER'], d['NAME'], r.hostname, r.port)"
 jq '.postgres.host,.postgres.port,.postgres.username,.redis.host,.redis.port' <setup.json>   # same values
 env -i PATH=$PATH HOME=$HOME DJANGO_READ_DOT_ENV_FILE=False uv run python manage.py check     # fails on the missing database variables
 DJANGO_SETTINGS_MODULE=config.settings.test uv run python manage.py shell -c "from django.conf import settings as s; print(s.DATABASES['default']['ENGINE'], s.CHANNEL_LAYERS['default']['BACKEND'], s.CELERY_TASK_ALWAYS_EAGER)"
-# expect: sqlite3, InMemoryChannelLayer, True
+# expect: postgresql, InMemoryChannelLayer, True
+grep -n CACHES config/settings/test.py                                                      # nothing
 ```
 
 Traps:
-- `base.py` reads the database variables at import time. So test runs and `manage.py tailwind` still need `POSTGRES_*` or `DATABASE_URL` set; a dummy value is fine.
+- `base.py` reads the database variables at import time, so `manage.py tailwind` needs them too: `.env` locally, the workflow-level env in CI.
 - `.env` uses separate `POSTGRES_HOST/PORT/DB/USER/PASSWORD` keys, so the password needs no URL encoding. The Redis password in setup.json may be null: then `REDIS_URL` has no user part.
 
 **5. Secrets stay in `.env`.** Passwords are written from setup.json into `.env` without being shown, and the file is mode 600. Never print, cat or commit it. `.env.example` lists key names with empty values. `.dockerignore` keeps `.env` out of the image (the generated one does not).
@@ -243,19 +267,16 @@ Traps:
 | `run` | runserver on port 8000 |
 | `asgi` | `uv run uvicorn config.asgi:application --reload --port 8001`, serves websockets, can run next to `run` |
 | `worker`, `beat` | `uv run celery -A config.celery_app ...` directly, not through compose |
-| `css`, `css-watch` | `manage.py tailwind build` / `watch`, with `DJANGO_SETTINGS_MODULE=config.settings.test DATABASE_URL=sqlite://` so they work without `.env` |
+| `css`, `css-watch` | `manage.py tailwind build` / `watch`, with `DJANGO_SETTINGS_MODULE=config.settings.test` |
 | `vendor` | downloads the pinned browser files |
 | `test`, `migrate`, `setup` | `setup` = `uv sync` plus css. `test` builds whatever tests need. |
-Check: `just --summary` lists them all. Tests pass even when Postgres and Redis are unreachable:
+Check: `just --summary` lists them all. Tests pass even when Redis is unreachable:
 ```
-DATABASE_URL=postgres://x@127.0.0.1:1/x REDIS_URL=redis://127.0.0.1:1/0 just test
+REDIS_URL=redis://127.0.0.1:1/0 just test
 ```
-
-Traps:
-- The `sites` migration 0003 runs Postgres-only SQL, so SQLite tests fail until it is guarded with `if created and not is_sqlite`.
 
 **19. Superuser recipe.** `just superuser` runs `createsuperuser --noinput` using `DJANGO_SUPERUSER_EMAIL` (= `<email>`) and a generated `DJANGO_SUPERUSER_PASSWORD` from `.env` (both keys also in `.env.example`). The password is never printed. Bootstrap does not run it.
-Check: `grep -c '^DJANGO_SUPERUSER_\(EMAIL\|PASSWORD\)=.' .env` is 2. On a throwaway SQLite database (test settings: migrate, superuser, then delete `db.sqlite3`), the output does not contain the password: `grep -cFf <(sed -n 's/^DJANGO_SUPERUSER_PASSWORD=//p' .env)` is 0.
+Check: `grep -c '^DJANGO_SUPERUSER_\(EMAIL\|PASSWORD\)=.' .env` is 2. On a throwaway database `<pkg>_check` on setup.json's Postgres (create, `POSTGRES_DB=<pkg>_check` migrate and superuser, then drop it), the output does not contain the password: `grep -cFf <(sed -n 's/^DJANGO_SUPERUSER_PASSWORD=//p' .env)` is 0.
 
 Traps:
 - Keys from `.env` end up in `os.environ`. `DJANGO_SUPERUSER_*` there breaks the template's `test_createsuperuser_command`; an autouse conftest fixture removes them.
@@ -264,29 +285,29 @@ Traps:
 Check: `jq` parses the file (it is JSONC, strip comments first if any), every task's command is a recipe in `just --summary`, and `git check-ignore --no-index .zed/tasks.json` exits 1.
 
 ### Quality gates
-**21. Lint and types.** pre-commit hooks are installed and all pass. The built CSS and `<pkg>/static/vendor/` are excluded from pre-commit: its whitespace and end-of-file fixers would rewrite them and break the CI check in goal 23 and the no-diff check in goal 2.
+**21. Lint and types.** pre-commit hooks (installed in B2) still all pass. The built CSS and `<pkg>/static/vendor/` are excluded from pre-commit: its whitespace and end-of-file fixers would rewrite them and break the CI check in goal 23 and the no-diff check in goal 2.
 ```
-git add -A && uv run pre-commit install && uv run pre-commit run --all-files   # exit 0 (run once more after autofixes)
-uv run mypy <pkg>                                                                                    # no issues
+git add -A && uv run pre-commit run --all-files   # exit 0 (run once more after autofixes)
+uv run mypy <pkg>                                 # no issues
 ```
 
 Traps:
-- Ruff flags `HTTPStatus.OK` comparisons (PLR2004) and generated secrets (S106) in tests. In `test.py`, import `BASE_DIR` by name instead of relying on the star import (F405).
+- Ruff flags `HTTPStatus.OK` comparisons (PLR2004) and generated secrets (S106) in tests.
 
 **22. Coverage.** `just test` runs pytest under coverage and prints a report, with `fail_under = 80` in pyproject. Python only: the template's `django_coverage_plugin` is removed with `uv remove --dev django-coverage-plugin`. Coverage comes from real tests (pages, components, settings, task, consumer); `omit` lists only migrations and tests.
 Check: `just test` shows TOTAL of at least 80, and `uv run coverage report --fail-under=100` fails (proves the gate is real).
 
-**23. Built CSS is committed and CI catches a stale one.** CI (from the `ci` input) runs `uv sync`, `just css`, then `git diff --exit-code <built css>`. No Node setup and no `.env` in CI. If `ci=None`, there is no CI: report this goal as not verified.
-Check: the CI file has that step. After this goal's commit, `just css && git diff --exit-code <built css>` exits 0. A fresh clone with no `.env` and no node on `PATH` gives no diff after `uv sync` and `just css`. For GitHub, lint the workflow with `actionlint`, or `docker run --rm -v $PWD:/repo -w /repo rhysd/actionlint` if it is not installed; otherwise report not verified.
+**23. Built CSS is committed and CI catches a stale one.** The linter job also runs `uv sync`, `just css`, then `git diff --exit-code <built css>`. No Node setup and no `.env` in CI. If `ci=None`, there is no CI: report this goal as not verified.
+Check: the CI file has that step. After this goal's commit, `just css && git diff --exit-code <built css>` exits 0. A fresh clone with no `.env`, only the workflow's `POSTGRES_*` values, and no node on `PATH` gives no diff after `uv sync` and `just css`. For GitHub, lint the workflow with `actionlint`, or `docker run --rm -v $PWD:/repo -w /repo rhysd/actionlint` if it is not installed; otherwise report not verified.
 
 Traps:
-- CI's `uv sync` builds `psycopg[c]`, so the job installs `libpq-dev`. CI must run `uv sync` before `just css`, or the `@source` path into site-packages is empty.
+- CI must run `uv sync` before `just css`, or the `@source` path into site-packages is empty. The linter job then needs `libpq-dev` and uv, as the pytest job does (B1).
 
 ### Repo files
-**24. `.gitignore`.** Ignores `.env`, `.venv`, `db.sqlite3` and the Tailwind binary cache `.django_tailwind_cli/`. Does not ignore the built CSS, `static/vendor/` or `.zed/`: those are committed (goals 2, 20, 23).
+**24. `.gitignore`.** Ignores `.env`, `.venv` and the Tailwind binary cache `.django_tailwind_cli/`. Does not ignore the built CSS, `<pkg>/static/vendor/` or `.zed/`: those are committed (goals 2, 20, 23).
 ```
-git check-ignore --no-index <each ignored path> | wc -l    # equals the number of paths
-git check-ignore --no-index <built css> <pkg>/static/vendor/<a file>              # exits 1
+git check-ignore --no-index .env .venv .django_tailwind_cli/ | wc -l             # 3
+git check-ignore --no-index <built css> <pkg>/static/vendor/x .zed/tasks.json    # exits 1
 ```
 
 **25. No leftovers from the template's frontend.** No Bootstrap CSS and no crispy forms. The generated Docker, compose, Celery and docs files stay (see "What happens to the Docker files").
@@ -316,7 +337,7 @@ Pass the password only through the environment, never echo it. With setup.json a
 PGPASSWORD="$(jq -r .postgres.password <setup.json>)" psql -h "$(jq -r .postgres.host <setup.json>)" -p "$(jq -r .postgres.port <setup.json>)" \
   -U "$(jq -r .postgres.username <setup.json>)" -d postgres -tAc "select 1 from pg_database where datname='<pkg>'"
 ```
-Create it with the same command and `-c 'CREATE DATABASE "<pkg>"'`. Then `just migrate` on Postgres must report all migrations OK. Tests keep using SQLite from `test.py`.
+Create it with the same command and `-c 'CREATE DATABASE "<pkg>"'`. Then `just migrate` on Postgres must report all migrations OK. Tests use `test_<pkg>` on the same server, which pytest-django creates and keeps between runs (`--reuse-db`).
 
 ## Run
 - `cd <repo folder> && just run`

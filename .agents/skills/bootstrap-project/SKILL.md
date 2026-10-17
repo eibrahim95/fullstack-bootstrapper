@@ -60,9 +60,9 @@ Then run every check in the chosen stack file's Tools section. If one fails, sto
 Read the stack file. Show the user:
 - the parent folder, and whether it will be created or reused
 - the generate command(s) from the stack file's Source section, filled with the answers
-- the stack's goals, one line each
+- the stack's baseline goals and goals, one line each
 - the database name from the stack file's Database section, and the Postgres host, port and user from setup.json
-- the exact `gh repo create <owner>/<slug> --<visibility>` command, and that the generated code is pushed to `main` once its CI checks pass locally
+- the exact `gh repo create <owner>/<slug> --<visibility>` command, and that the generated code, with the baseline goals met, is pushed to `main` once its CI checks pass locally
 - that the goals land on branch `bootstrap/<stack id>`, one commit per goal, with a PR into `main` that the user merges
 - which planning folders will move to the artifacts folder after the PR is open
 
@@ -73,15 +73,16 @@ Run the stack file's Source steps. Its output becomes the repo folder.
 If it fails: report `bootstrap-project: failed scaffold: generate <reason>`, and offer to delete what this run made (the repo folder, plus the parent folder if this run created it).
 
 ## 5 Make the first commit
-The generated code goes to `main` as it is, but only once its CI would pass: `main` is pushed next, and its first CI run must be green.
+The generated code goes to `main` with only the stack's Baseline goals added, and only once its CI would pass: `main` is pushed next, and its first CI run must be green.
 In the repo folder:
 1. `git init -b main`. The first branch is always `main`.
 2. If the global `git config user.email` is empty, set `user.name` and `user.email` on this repo only, from setup.json `github.login` and `github.email`. Never change the global config.
-3. `git add -A`, then check that nothing like `.env`, `node_modules/` or `.venv/` is staged. If one is, fix `.gitignore` and add again.
-4. If the repo has CI config (`.github/workflows/`, `.gitlab-ci.yml`, `.travis.yml`, `.drone.yml`), read every job and run its steps locally, the way CI runs them: same commands, same containers when a job uses docker compose, no `.env` (CI has none). Lint GitHub workflows with `actionlint`, or `docker run --rm -v $PWD:/repo -w /repo rhysd/actionlint` if it is not installed. Fix what fails with the smallest change, `git add -A` again, and rerun until every job passes. A step that cannot run locally (it needs a secret or a service you cannot start): say which, and rely on the CI run in step 6. If the same job fails three attempts in a row, stop.
-5. `git commit -m "chore: init <slug> from <stack id> stack"`, with no trailers.
-6. Record the repo: status helper `set repo_path=<repo folder>`.
-If CI does not pass: report `bootstrap-project: failed ci: <job> <reason>`. If git fails: report `bootstrap-project: failed git: <reason>`. Either way nothing is pushed and nothing moves.
+3. Reach every goal in the stack file's Baseline section, in order, and run its verify, as in step 8 (traps are advice; three failed attempts on the same goal: stop). Keep each result for the report. Nothing else from the Goals section goes into this commit.
+4. `git add -A`, then check that nothing like `.env`, `node_modules/` or `.venv/` is staged. If one is, fix `.gitignore` and add again.
+5. If the repo has CI config (`.github/workflows/`, `.gitlab-ci.yml`, `.travis.yml`, `.drone.yml`), read every job and run its steps locally, the way CI runs them: same commands, same containers when a job uses docker compose, no `.env` (CI has none). Lint GitHub workflows with `actionlint`, or `docker run --rm -v $PWD:/repo -w /repo rhysd/actionlint` if it is not installed. Fix what fails with the smallest change, `git add -A` again, and rerun until every job passes. A step that cannot run locally (it needs a secret or a service you cannot start): say which, and rely on the CI run in step 6. If the same job fails three attempts in a row, stop.
+6. `git commit -m "chore: init <slug> from <stack id> stack"`, with no trailers.
+7. Record the repo: status helper `set repo_path=<repo folder>`.
+If a baseline goal does not pass: report `bootstrap-project: failed scaffold: <goal> <reason>`. If CI does not pass: report `bootstrap-project: failed ci: <job> <reason>`. If git fails: report `bootstrap-project: failed git: <reason>`. Either way nothing is pushed and nothing moves.
 
 ## 6 Create the GitHub repo and push main
 In the repo folder. On resume, skip each part that is already done.
@@ -126,7 +127,7 @@ Tell the user:
 - how to run it: the stack file's Run section, with the repo folder filled in
 - the GitHub URL, the PR URL, where the artifacts are, and that status stays in `<project folder>/status.json`
 
-Then a `verified:` list with one line per stack goal: `<n> <short name>: verified`, or `<n> <short name>: not verified (<why>)`. A goal whose check did not run, or ran only partly (no browser, database skipped), is not verified. Never pass a goal silently.
+Then a `verified:` list with one line per stack goal, baseline goals first: `<n> <short name>: verified`, or `<n> <short name>: not verified (<why>)`. A goal whose check did not run, or ran only partly (no browser, database skipped), is not verified. Never pass a goal silently.
 
 If html-prototype is not `done` or `skipped` yet, add a line: `html-prototype is <status> (thread <thread>). It moves itself into <artifacts folder> when done.`
 
