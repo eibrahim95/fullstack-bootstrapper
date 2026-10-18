@@ -111,6 +111,7 @@ test -x .git/hooks/pre-commit                                                   
 
 ## Goals
 Tests always run on `config.settings.test`: Postgres from `.env`, no Redis. Checks that start the app (`just run`, `just asgi`, `just worker`) need the database created and migrated.
+A browser check means using the browser tools available to you, the way a person would: open the page, click, look. Never write a script that drives a browser. With no browser tools, report that goal as not verified.
 
 ### Dependencies
 **1. Python packages.** `pyproject.toml` and `uv.lock` have django, django-cotton, django-basecoat, django-unicorn, unpoly, celery, channels, channels-redis, django-storages, uvicorn and django-tailwind-cli. Python stays at the template's pinned version.
@@ -184,14 +185,15 @@ Traps:
 **7. Django check passes.** `uv run python manage.py check` says no issues.
 
 ### Frontend
-**8. Base layout.** Every page loads the built Tailwind CSS, Unpoly JS and CSS, Basecoat JS, and Alpine with the morph plugin, all from `static/vendor` (no CDN at runtime). Exactly one Alpine. All scripts use `defer`, in the order app.js, then morph, then Alpine. `{% unicorn_scripts %}` appears once in `<head>`. The page has `up-main`, Unpoly sends the CSRF token, and a `{% csrf_token %}` input sits inside `<main>` for unicorn.
+**8. Base layout.** Every page loads the built Tailwind CSS, Unpoly JS and CSS, Basecoat JS, and Alpine with the morph plugin, all from `static/vendor` (no CDN at runtime). Exactly one Alpine. All scripts use `defer`, morph before Alpine. `{% unicorn_scripts %}` appears once in `<head>`. The page has `up-main`, Unpoly sends the CSRF token from a `csrf-token` meta tag (`CSRF_HEADER_NAME = "HTTP_X_CSRF_TOKEN"`), and a `{% csrf_token %}` input sits inside `<main>` for unicorn.
+The layout is an app shell, not bare markup: a header with the app title, the nav links and the theme toggle; content in a centered container with a max width and consistent spacing; Basecoat's background, foreground and font tokens on `body`. Every control is a Basecoat component. No project design yet: the prototype's look comes later.
 Check: start `just run`; every `/static/` CSS and JS file linked from `curl -s localhost:8000/` returns 200. A test asserts the unicorn script appears once and there is one `csrfmiddlewaretoken`.
 
 Traps:
 - The template sets `CSRF_COOKIE_HTTPONLY`, so unicorn cannot read the cookie and uses the first `csrfmiddlewaretoken` input. Without it inside `<main up-main>`, calls fail with `CSRF token is missing`.
 - `{% unicorn_scripts %}` twice on a page breaks the non-debug build (`const url` declared twice).
 
-**9. Home page.** `/` renders through one project cotton component that holds a Basecoat button, card and dropdown menu, plus one Tailwind class.
+**9. Home page.** `/` renders through one project cotton component that holds a Basecoat button, card and dropdown menu, plus one Tailwind class. Placeholder content says it is a placeholder. No invented product actions: every button and link goes somewhere real.
 Check: a test asserts the component and the three Basecoat markers.
 
 Traps:
@@ -211,30 +213,30 @@ Traps:
 - Tailwind skips the gitignored `.venv`, so it needs an `@source` line pointing at the django-basecoat templates. Use the literal `lib/python3.X/site-packages` path; a glob does not match.
 - The Tailwind binary is about 110 MB from GitHub releases, cached in `.django_tailwind_cli/`. GitHub downloads can crawl; a copy from another checkout is fine if its sha256 matches the release's `sha256sums.txt`.
 
-**12. Dark mode.** Light, dark and system choices. An inline script in `<head>` sets `<html data-theme>` before the first stylesheet, so there is no flash. The choice is kept in localStorage through an Alpine store. Tailwind's `dark:` follows `data-theme`, `color-scheme` on `:root` matches, Basecoat's dark palette follows too, and every page has the toggle.
-Check: a test asserts the script comes before the stylesheet and offers 3 choices. The built CSS contains `where([data-theme=dark]` and `color-scheme`, and no `:is(.dark *)`.
+**12. Dark mode.** Light, dark and system choices. The choice is a `theme` cookie; the server renders `<html data-theme>`, so there is no flash and no head script. Alpine switches it (`x-data` on `<html>`, `@click` on the items) and an Unpoly form posts it to a view that sets the cookie and answers 204. System is CSS (`prefers-color-scheme`). Tailwind's `dark:` follows `data-theme`, `color-scheme` on `:root` matches, Basecoat's dark palette follows too, and every page has the toggle in the header: a Basecoat select or dropdown menu, never bare text or plain buttons.
+Check: tests cover the cookie view, the rendered `data-theme`, and that the dark tokens still equal Basecoat's `.dark` block. The built CSS contains `where([data-theme=dark]` and `color-scheme`, and no `:is(.dark *)`.
 
 Traps:
-- Basecoat's dark mode uses a `.dark` class and `@custom-variant dark (&:is(.dark *))`. Our own `@custom-variant` on `data-theme`, placed after the Basecoat import, wins, also inside Basecoat's `@apply dark:`. The theme script sets both `data-theme` and `.dark`, because Basecoat's color tokens stay on `.dark`.
+- Basecoat's dark mode uses a `.dark` class and `@custom-variant dark (&:is(.dark *))`. Our own `@custom-variant` on `data-theme`, placed after the Basecoat import, wins, also inside Basecoat's `@apply dark:`. Basecoat's color tokens sit on `.dark`, so copy them onto `[data-theme=dark]` and the system media query; then `.dark` is never set.
 
 **13. Unpoly and Alpine work together.**
-- `app.js` loads with `defer` before Alpine and registers stores in `alpine:init`.
-- `Alpine.initTree` runs on each `up:fragment:inserted`.
-- Page scripts and Basecoat widget re-binding use `up.compiler()`, returning a cleanup function. No `showModal()` inside an Unpoly layer.
-- The Unpoly cache is cleared when a unicorn component is inserted (otherwise cached pages bring back dead components).
-- History restore swaps `main`, not `body`.
+- No custom JS: behavior is `up-*` and Alpine attributes. Alpine initializes swapped fragments itself.
+- `app.js` holds only `up.history.config.restoreTargets = [":main"]` (Basecoat widgets die when `body` is swapped) and `up.network.config.autoCache = false` (cached pages bring back dead unicorn components).
 - Every URL returns a full HTML document, never a fragment.
-- The modal page opens from one `<c-button up-href up-follow up-layer="new">` (no button inside an `<a>`). It is a full page with `<main up-main>`. The modal box is the only frame: no card inside, background from the surface token.
+- Home opens one secondary page as an overlay, from one `<c-button up-href up-follow up-layer="new">` (no button inside an `<a>`). Opening as an overlay is the link's choice, not the page's: the page is a full page with `<main up-main>`, named for what it shows (the unicorn demo of goal 15, for example `/live-counter/`), and works opened directly too. The overlay box is the only frame: no card inside, background from the surface token.
 
-Check: `grep -rn 'basecoat\.init' <pkg>/static --exclude-dir=vendor` finds nothing. A test asserts app.js loads before Alpine, home has `up-layer="new"`, no `<a>` wraps a button, and the modal URL returns 200. If headless Chrome is available, under both `just run` and `just asgi`: Alpine, the unicorn demo and the Basecoat dropdown still react after an Unpoly swap of `main`, inside the modal, and after going back in history; Alpine state inside the component survives a re-render; there is one Alpine script; the theme toggles. Without a browser, report this goal as not verified.
+Check: `grep -rn 'basecoat\.init' <pkg>/static --exclude-dir=vendor` finds nothing. A test asserts no inline script besides unicorn's, home has `up-layer="new"`, no `<a>` wraps a button, and the secondary page returns 200. In the browser, under both `just run` and `just asgi`: Alpine, the unicorn demo and the Basecoat dropdown still react after an Unpoly swap of `main`, inside the overlay, and after going back in history; Alpine state inside the component survives a re-render; there is one Alpine script; the theme toggles.
 
 Traps:
 - Basecoat's JS already initializes new elements through a MutationObserver on `document.body`, so `basecoat.init(name)` in a compiler binds every listener twice.
+- `unpoly.min.css` gives `up-modal-box` `background-color:#fff` and `up-modal-dismiss` a fixed grey, so in dark mode the overlay is a white frame around dark content. Style `up-modal-box`, `up-drawer-box` and `up-popup` in the Tailwind input with Basecoat's `--background`, `--foreground` and `--border` (and the dismiss buttons with `--muted-foreground`); the Tailwind CSS loads after Unpoly's, so these win.
 
 **14. Template layout.** Templates live in `cotton/`, `layouts/`, `partials/`, `pages/` and `unicorn/` (plus error pages and app overrides). There is no root `base.html`. Every page renders.
-Check: with `just run`, `/`, `/about/` and each project page return 200, and the HTML contains no `{{`, `{%`, `<c-x` or `TemplateSyntaxError`.
+URLs, URL names, views and templates are named for what the page is to the user. Never for a UI mechanism (modal, overlay, drawer, partial, fragment) and never numbered.
+Check: with `just run`, `/`, `/about/` and each project page return 200, and the HTML contains no `{{`, `{%`, `<c-x` or `TemplateSyntaxError`. `grep -rniE 'modal|overlay|drawer|layer|[a-z][0-9]+\b' config/urls.py <pkg>/*/urls.py` and the file names under `templates/pages/` find no route or page named that way.
+In the browser, look at every page at desktop width and at phone width, in light and in dark: the header, the container and the spacing hold; nothing touches the viewport edge; no control is unstyled or bare text; nothing overflows sideways; every link and button goes somewhere. Fix what looks broken, then look again.
 
-**15. Unicorn demo.** One clearly named component, for example `live-counter` (`core/components/live_counter.py` and `templates/unicorn/live-counter.html`), on a secondary page (the modal page from goal 13), not on home.
+**15. Unicorn demo.** One clearly named component, for example `live-counter` (`core/components/live_counter.py` and `templates/unicorn/live-counter.html`), on the secondary page that home opens as an overlay (goal 13), not on home.
 Check: a test opens that page, posts a `callMethod` to `/unicorn/message/<name>`, gets 200, and finds the new state in `data` and `dom`. In the browser, clicking it works under `just asgi` too.
 
 Traps:
@@ -322,11 +324,13 @@ Check: `grep -nE '\.bootstrap|artifacts' AGENTS.md README.md` finds nothing.
 **27. AGENTS.md rules.** The app's AGENTS.md also covers:
 - the component ladder: Basecoat first, then cotton, then Alpine, then unicorn. Unicorn only when Unpoly and Alpine cannot do it simply (live server state, many linked fields, polling-heavy screens); its endpoint returns JSON. Name the demo component as the example.
 - no second component library, and never hand-roll a component Basecoat ships
+- naming: URLs, URL names, views and templates are named for what the page is to the user, in the app's language. Never for a UI mechanism (modal, overlay, drawer, partial) and never numbered (`/modal2/`). Opening a page as an overlay is the link's choice (`up-layer="new"`), not part of the page's name.
+- looking at the result: after UI changes, open the pages with the browser tools available, at desktop and phone width, light and dark
 - every django-basecoat component, read from the package's `templates/cotton/` (the README names are wrong)
 - the Unpoly, Alpine, unicorn and theme rules; Celery for background work; Channels for websockets (`just asgi` serves them); `@theme` tokens named by purpose
 - working rules: no hand-written migrations, no `# noqa`, no comments that narrate the code, no commit trailers, rebuild and commit the Tailwind CSS after template or CSS changes, lint and test before each commit
 
-Check: every `<site-packages>/django_basecoat/templates/cotton/*.html` name (with `_` as `-`) appears in AGENTS.md; `grep -ciE 'migrations by hand|noqa|narrat|trailer|lint|tailwind' AGENTS.md` is at least 6; `grep -cE 'unicorn.*JSON|JSON.*unicorn' AGENTS.md` is at least 1; the demo component's file name appears; goal 26's check still finds nothing.
+Check: every `<site-packages>/django_basecoat/templates/cotton/*.html` name (with `_` as `-`) appears in AGENTS.md; `grep -ciE 'migrations by hand|noqa|narrat|trailer|lint|tailwind' AGENTS.md` is at least 6; `grep -cE 'unicorn.*JSON|JSON.*unicorn' AGENTS.md` is at least 1; `grep -ciE 'mechanism|numbered' AGENTS.md` is at least 1; the demo component's file name appears; goal 26's check still finds nothing.
 
 ## Versions
 Use current compatible releases: `uv add` chooses them, never pick a version by hand. Bound one only where a trap says a version is bad. Resolved versions live in `uv.lock`, the `vendor` recipe URLs and the Tailwind version setting.

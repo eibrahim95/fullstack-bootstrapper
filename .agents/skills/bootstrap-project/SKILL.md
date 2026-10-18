@@ -100,10 +100,15 @@ Ask `Create database "<name>" on <host>:<port> as <user>? (y/n)`, unless `db=` w
 If creating it fails: report `bootstrap-project: failed db: <reason>`. The repo stays and nothing moves.
 
 ## 8 Reach every goal, one commit each
-Branch off `main`: `git switch -c bootstrap/<stack id>`. On resume, switch to that branch and skip goals that already have their commit, but still run their verify.
+Branch off `main`: `git switch -c bootstrap/<stack id>`. On resume, switch to that branch and run each goal's verify in order: a goal that passes with a clean tree is done; the first that fails is where work restarts.
 The stack file's Goals describe the end state. How to get there is your call. Work through them in the stack file's order, and run every check inside the repo folder. A goal's Traps list pitfalls found in earlier runs: advice, not requirements. They save time, but versions change, so check them.
 After each goal, run its verify. Fix and rerun until it passes. If the same goal fails three attempts in a row, stop. Keep each goal's result for the report.
-When a goal passes, commit it on its own: `git add -A`, check the staged files as in step 5, then `git commit -m "feat: <n> <short name>"`, with no trailers. A fix an earlier goal needs goes into the current goal's commit. A goal with nothing to commit (already met) gets no commit; say so in the PR. A check marked "after this goal's commit" runs right after that commit; a fix for it is amended into the same commit (nothing is pushed yet).
+When a goal passes, commit it on its own: `git add -A`, check the staged files as in step 5, then commit with no trailers. Write the message for someone reading the app's history, who has never seen the stack file:
+- Conventional Commits, with the type the change really is (`feat`, `build`, `ci`, `chore`, `refactor`, `test`, `docs`).
+- The subject says what the app now does or has, in the app's terms, read from the diff. Never goal numbers, goal names, or the words goal, baseline, stack, bootstrap.
+- A body when the why is not obvious from the diff: a choice made, a workaround for a trap, what was removed and why. Skip the body when the subject says it all.
+
+A fix an earlier goal needs goes into the current goal's commit. A goal with nothing to commit (already met) gets no commit; say so in the PR. A check marked "after this goal's commit" runs right after that commit; a fix for it is amended into the same commit (nothing is pushed yet).
 If you stop: report `bootstrap-project: failed scaffold: <goal> <reason>`. Nothing is pushed and nothing moves. `main`, the GitHub repo and the branch's commits stay; running `/bootstrap-project <id>` again resumes on the branch.
 
 ## 9 Push the branch and open the PR
@@ -127,7 +132,7 @@ Tell the user:
 - how to run it: the stack file's Run section, with the repo folder filled in
 - the GitHub URL, the PR URL, where the artifacts are, and that status stays in `<project folder>/status.json`
 
-Then a `verified:` list with one line per stack goal, baseline goals first: `<n> <short name>: verified`, or `<n> <short name>: not verified (<why>)`. A goal whose check did not run, or ran only partly (no browser, database skipped), is not verified. Never pass a goal silently.
+Then a `verified:` list with one line per stack goal, baseline goals first: `<n> <short name>: verified`, or `<n> <short name>: not verified (<why>)`. A goal whose check did not run, or ran only partly (no browser tools, database skipped), is not verified. Never pass a goal silently.
 
 If html-prototype is not `done` or `skipped` yet, add a line: `html-prototype is <status> (thread <thread>). It moves itself into <artifacts folder> when done.`
 
