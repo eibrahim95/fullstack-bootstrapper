@@ -15,3 +15,4 @@
 | impeccable  |                     | agent skill, UI design      |
 | cookiecutter |                     | project templates           |
 | rust        | rustup, cargo       | Rust toolchain              |
+| topcoat     | topcoat-cli         | Topcoat web framework CLI   |

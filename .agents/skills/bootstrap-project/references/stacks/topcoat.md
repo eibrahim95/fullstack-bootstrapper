@@ -33,7 +33,7 @@ Network: GitHub (the Tailwind CLI download), crates.io, Docker Hub.
 |---|---|---|
 | rustup, cargo | `rustup --version && cargo --version` | `/ensure-installed rust` |
 | Rust 1.99 | `rustc --version` prints `1.99` or later (the repo's `rust-toolchain.toml` pins it once it exists) | `rustup toolchain install 1.99 --component rustfmt clippy` |
-| topcoat CLI 0.12 | `topcoat --version` | `cargo install topcoat-cli --version 0.12.1 --locked` (not in /ensure-installed yet) |
+| topcoat CLI 0.12 | `topcoat --version` | `/ensure-installed topcoat` |
 | just | `just --version` | `/ensure-installed just` |
 | jq, psql, curl | `command -v jq psql curl` | install with the system package manager |
 | docker | `docker info` | /ensure-runnable-docker |
@@ -62,8 +62,8 @@ Traps:
 These go into the first commit on `main`, so its first CI run is green. Everything else waits for the Goals branch.
 Traps last verified: none. No bootstrap run has happened, so every trap below comes from the docs and source read 2026-11-16, with `topcoat` and `topcoat-cli` 0.12.1, `toasty` 0.11.0, Rust 1.99 and `actions/checkout` v7. The first run replaces this line with the versions it verified, and records what it hit as traps.
 
-**B1. Toolchain and checks.** `rust-toolchain.toml` pins `channel = "1.99"` with `components = ["rustfmt", "clippy"]`. `rustfmt.toml` sets `edition = "2024"` (`topcoat fmt --rustfmt` needs it). `Cargo.toml` pins `topcoat` with `=0.12.1` and `toasty` with `=` the version the generator wrote. A justfile has `fmt` (`topcoat fmt --rustfmt`), `check` (`topcoat fmt --check --rustfmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test`) and `dev` (`HOST=127.0.0.1 PORT=<port> topcoat dev`). `topcoat l10n check` joins `check` in goal 5, `migration` and `migrate` in goal 3, `seed` in goal 14.
-CI (from the `ci` input) is one GitHub workflow on pull requests and pushes to `main`: `actions/checkout@v7`, `rustup show` (installs the pinned toolchain), `Swatinem/rust-cache@v2`, start the runner's Postgres, then the same commands as `just check`, with `DATABASE_URL` set at workflow level. No Docker or `services:` containers. If `ci=None`, there is no CI: report this goal as not verified.
+**B1. Toolchain and checks.** `rust-toolchain.toml` pins `channel = "1.99"` with `components = ["rustfmt", "clippy"]`. `rustfmt.toml` sets `edition = "2024"` (`topcoat fmt --rustfmt` needs it). `Cargo.toml` pins `topcoat` with `=0.12.1` and `toasty` with `=` the version the generator wrote. A justfile has `fmt` (`topcoat fmt --rustfmt`), `check` (`topcoat fmt --check --rustfmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test`) and `dev` (`HOST=127.0.0.1 PORT=<port> topcoat dev`). `topcoat l10n check` joins `check` in goal 5, `migration` and `migrate` in goal 3, `test` replaces `cargo test` in `check` in goal 12, `seed` in goal 14.
+CI (from the `ci` input) is one GitHub workflow on pull requests and pushes to `main`: `actions/checkout@v7`, `rustup toolchain install` (no arguments; reads `rust-toolchain.toml`), `Swatinem/rust-cache@v2`, start the runner's Postgres, then the same commands as `just check`, with `DATABASE_URL` and `TEST_DATABASE_URL` set at workflow level. No Docker or `services:` containers. If `ci=None`, there is no CI: report this goal as not verified.
 ```
 just check                                                 # passes on the bare scaffold
 grep -nE '"=0\.12\.1"' Cargo.toml                          # topcoat pinned exactly
@@ -74,6 +74,7 @@ Lint the workflow with `actionlint`, or `docker run --rm -v $PWD:/repo -w /repo 
 Traps:
 - GitHub's `ubuntu-latest` ships PostgreSQL with the service stopped: `sudo systemctl start postgresql.service`, then `sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres'"`, because TCP logins need a password.
 - `topcoat fmt --check` without `--rustfmt` checks only macro bodies.
+- `rustup show` no longer installs the pinned toolchain since rustup 1.28. Use `rustup toolchain install` with no arguments.
 
 **B2. `.gitignore`.** Ignores `target/`, `.env`, `data.db*` and `mail/` (the file transport's folder). Does not ignore `Cargo.lock`, `.zed/` or `components.toml`.
 ```
@@ -93,7 +94,7 @@ grep -nE '^topcoat.*"=0\.12\.1"' Cargo.toml                 # pinned
 ```
 
 ### Server
-**2. Environment from `.env`, checked at boot.** `src/env.rs` reads `DATABASE_URL` (required, `postgresql://`), `HOST` (default `127.0.0.1`), `PORT` (default `<port>`), `SMTP_URL` (optional; empty means the file transport) and `APP_ENV` (default `development`). A missing required variable stops boot with a message naming every missing key; there is no fallback database. `.env` is written from setup.json without being shown, mode 600, with database `<pkg>`. `.env.example` lists the keys with empty values.
+**2. Environment from `.env`, checked at boot.** `src/env.rs` reads `DATABASE_URL` (required, `postgresql://`), `HOST` (default `127.0.0.1`), `PORT` (default `<port>`), `SMTP_URL` (optional; empty means the file transport), `TEST_DATABASE_URL` (optional; read only by tests, database `<pkg>_test`) and `APP_ENV` (default `development`). A missing required variable stops boot with a message naming every missing key; there is no fallback database. `.env` is written from setup.json without being shown, mode 600, with database `<pkg>` and `TEST_DATABASE_URL` on `<pkg>_test`. `.env.example` lists the keys, `TEST_DATABASE_URL` included, with empty values.
 ```
 stat -f %Lp .env 2>/dev/null || stat -c %a .env           # 600
 grep -c '=.' .env.example                                  # 0
@@ -157,8 +158,11 @@ Check: add a note in development; a file appears in `mail/`.
 **11. Sessions.** Topcoat manages the token (32 random bytes, `__Host-` cookie, `Secure`, `HttpOnly`, `SameSite=Lax`); the app stores only its SHA-256 `TokenHash` with the expiry in a `session` table through Toasty, and rejects missing or expired records. Sign-in itself is not in this stack, so the example session only holds the chosen theme.
 Check: `curl -c` then `-b` keeps the same session across two requests; the table holds a hash, never the raw token.
 
-**12. Tests.** `cargo test` covers: a note added and listed first, an empty note refused, `/health`, the environment error, and the mail assertion. Tests use `<pkg>_test` on the same server, created and migrated if missing, reused between runs. No database mocks.
-Check: `cargo test` passes twice in a row.
+**12. Tests.** `cargo test` covers: a note added and listed first, an empty note refused, `/health`, the environment error, and the mail assertion. No database mocks. Tests read `TEST_DATABASE_URL`, database `<pkg>_test` on the same server. `cargo test` cannot migrate it: migrations run only through the app binary, which opens `DATABASE_URL` before it parses arguments (goal 3). So the `test` recipe creates `<pkg>_test` if missing, runs `DATABASE_URL=<test url> cargo run --quiet -- toasty migration apply`, then `cargo test`. `check` runs the same steps instead of bare `cargo test`. The database is reused between runs.
+Check: `just test` passes twice in a row, and again after dropping `<pkg>_test`.
+
+Traps:
+- Not verified by a run, like every trap here. The first run confirms the test recipe creates and migrates `<pkg>_test`.
 
 ### Delivery
 **13. Container.** `Dockerfile`, multi-stage. Build stage `rust:1.99-slim` with the pinned Tailwind CLI on `TAILWIND_CLI`; `cargo build --release --locked`. Run stage `debian:bookworm-slim` (or distroless cc once verified), non-root user, the binary and its assets, `HOST=0.0.0.0`, `PORT` honoured. `.dockerignore` excludes `target`, `.env`, `.git`, `mail`.
@@ -176,7 +180,7 @@ Check: `just dev`, then `curl localhost:<port>/health` answers. `jq` parses the 
 Traps:
 - `topcoat dev` reads `HOST` and `PORT` from the environment and, when that port is taken, moves to the next free one and prints it. A check that curls the recipe's port can hit whatever already holds it; read the port the dev server prints.
 
-**15. A fresh clone passes CI.** A clone with no `.env`, with only `DATABASE_URL` exported (database `<pkg>_ci`), passes `just check`. Drop `<pkg>_ci` and `<pkg>_ci_test` afterwards. For GitHub, lint the workflow with `actionlint`; otherwise report not verified.
+**15. A fresh clone passes CI.** A clone with no `.env`, with only `DATABASE_URL` (database `<pkg>_ci`) and `TEST_DATABASE_URL` (database `<pkg>_ci_test`) exported, passes `just check`. Drop `<pkg>_ci` and `<pkg>_ci_test` afterwards. For GitHub, lint the workflow with `actionlint`; otherwise report not verified.
 
 **16. README and AGENTS.md.** README has the title, the one-liner and how to run it: Postgres on the host, `just migrate`, `just dev`, the URL, and the islands note from goal 9. AGENTS.md has the stack, the commands (including the Zed tasks), the folder layout and these rules:
 - crates only through `cargo add <crate>@<version>`; `topcoat` stays pinned with `=`, and upgrades follow the release's upgrade guide in their own commit
@@ -199,7 +203,7 @@ Pass the password only through the environment, never echo it. With setup.json a
 PGPASSWORD="$(jq -r .postgres.password <setup.json>)" psql -h "$(jq -r .postgres.host <setup.json>)" -p "$(jq -r .postgres.port <setup.json>)" \
   -U "$(jq -r .postgres.username <setup.json>)" -d postgres -tAc "select 1 from pg_database where datname='<pkg>'"
 ```
-Create it with the same command and `-c 'CREATE DATABASE "<pkg>"'`. Then `just migrate` must apply every migration. Tests use `<pkg>_test` on the same server, which the test setup creates and keeps between runs.
+Create it with the same command and `-c 'CREATE DATABASE "<pkg>"'`. Then `just migrate` must apply every migration. Tests use `<pkg>_test` on the same server, which `just test` creates and migrates if missing, and keeps between runs.
 
 ## Run
 - `cd <repo folder> && just dev`
