@@ -80,7 +80,7 @@ In the repo folder:
 1. `git init -b main`. The first branch is always `main`.
 2. If the global `git config user.email` is empty, set `user.name` and `user.email` on this repo only, from setup.json `github.login` and `github.email`. Never change the global config.
 3. Reach every goal in the stack file's Baseline section, in order, and run its verify, as in step 8 (traps are advice; three failed attempts on the same goal: stop). Keep each result for the report. Nothing else from the Goals section goes into this commit.
-4. `git add -A`, then check that nothing like `.env`, `node_modules/` or `.venv/` is staged. If one is, fix `.gitignore` and add again.
+4. `git add -A`, then check that nothing like `.env`, `node_modules/`, `.venv/` or `target/` is staged. If one is, fix `.gitignore` and add again.
 5. If the repo has CI config (`.github/workflows/`, `.gitlab-ci.yml`, `.travis.yml`, `.drone.yml`), read every job and run its steps locally, the way CI runs them: same commands, same containers when a job uses docker compose, no `.env` (CI has none). Lint GitHub workflows with `actionlint`, or `docker run --rm -v $PWD:/repo -w /repo rhysd/actionlint` if it is not installed. Fix what fails with the smallest change, `git add -A` again, and rerun until every job passes. A step that cannot run locally (it needs a secret or a service you cannot start): say which, and rely on the CI run in step 6. If the same job fails three attempts in a row, stop.
 6. `git commit -m "chore: init <slug> from <stack id> stack"`, with no trailers.
 7. Record the repo: status helper `set repo_path=<repo folder>`.
