@@ -6,7 +6,7 @@ A server-rendered Rust web app on Topcoat (tokio-rs), with Toasty on Postgres, T
 | Rust 1.99, edition 2024 | toolchain, pinned in `rust-toolchain.toml` with rustfmt and clippy |
 | Topcoat 0.12 | router (module routing), `view!` components, layouts, assets, sessions, mail, localization, browser runtime |
 | Topcoat runtime (`--interaction topcoat`) | small interactions: `$(...)` expressions and `#[shard]` components that re-render on the server |
-| Toasty 0.11 with the `postgresql` feature | models and queries. Schema changes through `toasty migration generate` and `apply`. |
+| Toasty 0.11 with the `postgresql` feature | models and queries. Schema changes through `cargo run -- toasty migration generate` and `apply`, the branch the generated `src/main.rs` adds when the first argument is `toasty`. |
 | Tailwind CSS 4 (Topcoat `tailwind` feature) + Topcoat UI | styling and components copied into `src/components` by `topcoat ui` |
 | Iconify, Fontsource | icons and fonts through Topcoat's asset pipeline |
 | Fluent (`l10n-fluent`) | `en` and `ar` messages, `lang` and `dir` on `<html>` |
@@ -31,7 +31,7 @@ Network: GitHub (the Tailwind CLI download), crates.io, Docker Hub.
 ## Tools
 | tool | check | fix |
 |---|---|---|
-| rustup, cargo | `rustup --version && cargo --version` | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh -s -- -y` (not in /ensure-installed yet) |
+| rustup, cargo | `rustup --version && cargo --version` | `/ensure-installed rust` |
 | Rust 1.99 | `rustc --version` prints `1.99` or later (the repo's `rust-toolchain.toml` pins it once it exists) | `rustup toolchain install 1.99 --component rustfmt clippy` |
 | topcoat CLI 0.12 | `topcoat --version` | `cargo install topcoat-cli --version 0.12.1 --locked` (not in /ensure-installed yet) |
 | just | `just --version` | `/ensure-installed just` |
@@ -60,9 +60,9 @@ Traps:
 
 ## Baseline: in the first commit
 These go into the first commit on `main`, so its first CI run is green. Everything else waits for the Goals branch.
-Commands checked against the Topcoat docs at 0.12.1 and Toasty 0.11 on 2026-11-16. This stack has not had a full bootstrap run yet: the first run verifies every check below and records what it hit as traps, with the versions it used.
+Traps last verified: none. No bootstrap run has happened, so every trap below comes from the docs and source read 2026-11-16, with `topcoat` and `topcoat-cli` 0.12.1, `toasty` 0.11.0, Rust 1.99 and `actions/checkout` v7. The first run replaces this line with the versions it verified, and records what it hit as traps.
 
-**B1. Toolchain and checks.** `rust-toolchain.toml` pins `channel = "1.99"` with `components = ["rustfmt", "clippy"]`. `rustfmt.toml` sets `edition = "2024"` (`topcoat fmt --rustfmt` needs it). `Cargo.toml` pins `topcoat` with `=0.12.1` and `toasty` with `=` the version the generator wrote. A justfile has `fmt` (`topcoat fmt --rustfmt`), `check` (`topcoat fmt --check --rustfmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, `topcoat l10n check`) and the recipes from goal 14.
+**B1. Toolchain and checks.** `rust-toolchain.toml` pins `channel = "1.99"` with `components = ["rustfmt", "clippy"]`. `rustfmt.toml` sets `edition = "2024"` (`topcoat fmt --rustfmt` needs it). `Cargo.toml` pins `topcoat` with `=0.12.1` and `toasty` with `=` the version the generator wrote. A justfile has `fmt` (`topcoat fmt --rustfmt`), `check` (`topcoat fmt --check --rustfmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test`) and `dev` (`HOST=127.0.0.1 PORT=<port> topcoat dev`). `topcoat l10n check` joins `check` in goal 5, `migration` and `migrate` in goal 3, `seed` in goal 14.
 CI (from the `ci` input) is one GitHub workflow on pull requests and pushes to `main`: `actions/checkout@v7`, `rustup show` (installs the pinned toolchain), `Swatinem/rust-cache@v2`, start the runner's Postgres, then the same commands as `just check`, with `DATABASE_URL` set at workflow level. No Docker or `services:` containers. If `ci=None`, there is no CI: report this goal as not verified.
 ```
 just check                                                 # passes on the bare scaffold
@@ -86,7 +86,7 @@ Checks that start the app need the database created and migrated.
 A browser check means using the browser tools available to you, the way a person would: open the page, click, look. Never write a script that drives a browser. With no browser tools, report that goal as not verified.
 
 ### Dependencies
-**1. Crates and versions.** Every crate is added with `cargo add <crate>@<version>` and removed with `cargo remove`; never edit `[dependencies]` by hand. `topcoat` stays pinned with `=` (B1). Topcoat features in use: `tailwind`, `l10n-fluent`, `session`, `mail-smtp`, `sse`, and whatever the generator enabled. `toasty` adds the `postgresql` feature and drops `sqlite` once nothing uses it.
+**1. Crates and versions.** Every crate is added with `cargo add <crate>@<version>` and removed with `cargo remove`; never edit `[dependencies]` by hand. `topcoat` stays pinned with `=` (B1). Topcoat features in use: `tailwind`, `l10n-fluent`, `session`, `mail-smtp`, `sse`, and whatever the generator enabled. `toasty` adds the `postgresql` feature and drops `sqlite` once nothing uses it. `toasty-cli` arrives with the generator, for the migration branch in `src/main.rs`; pin it with `=` too.
 ```
 cargo tree -d --depth 1                                     # no duplicate topcoat or toasty versions
 grep -nE '^topcoat.*"=0\.12\.1"' Cargo.toml                 # pinned
@@ -100,11 +100,16 @@ grep -c '=.' .env.example                                  # 0
 env -i PATH=$PATH HOME=$HOME ./target/debug/<pkg>          # exits non-zero, names DATABASE_URL
 ```
 
-**3. Postgres through Toasty.** The app connects with `Db::builder()...connect(DATABASE_URL)`; the URL scheme selects the driver. One example model, `Note` (`id`, `body`, `created_at`), so the app has one real read and write. Migrations live where `toasty migration generate` writes them and are committed. `just migration` generates, `just migrate` applies.
+**3. Postgres through Toasty.** `src/db.rs` connects with `Db::builder().models(toasty::models!(crate::*)).connect(DATABASE_URL)`; the URL scheme picks the driver, so the generator's `sqlite:data.db` constant becomes goal 2's `DATABASE_URL`. One example model, `Note` (`id`, `body`, `created_at`), so the app has one real read and write. Migrations run through the app binary, which is what the generator wires: `src/main.rs` keeps its `toasty` first-argument branch (`toasty_cli::ToastyCli::new(db).parse_from(args)`), so `cargo run -- toasty migration generate` writes `toasty/history.toml`, `toasty/snapshots/` and `toasty/migrations/*.sql`, and `cargo run -- toasty migration apply` applies them. The generator writes no `Toasty.toml`; add one only to move the folder or change the file naming. `just migration` and `just migrate` wrap those two commands and run from the crate root. The generated `toasty/` folder is committed.
 ```
-just migrate; just migrate                                 # the second run applies nothing
+just migration                                             # writes the first file under toasty/migrations/
+just migrate; just migrate                                 # applies, then applies nothing
 grep -rn 'sqlite' Cargo.toml src/                          # nothing
 ```
+Traps:
+- `toasty` is the app binary's first argument, not a program on `PATH`: `toasty migration generate` is a command-not-found, and the working form needs the crate root, because the binary opens the database before it parses the argument.
+- `migration generate` writes nothing and exits 0 when the schema has not changed since the snapshot, so an empty `git status` means no diff, not a broken command.
+- When the diff has a dropped and an added table or column, `generate` asks whether it is a rename, and that prompt blocks without a terminal. Answer it in a terminal, or split the change into two migrations.
 
 **4. Pages, layout and health.** Module routing. A root layout with the app title, nav links (active state shown) and the theme and language controls; content in a centred container with a max width. Routes: `/{locale}/` is the notes page (a form plus the list, newest first, with empty and error states, labelled as example data); `/{locale}/about` is a placeholder that says so; `/` redirects to the negotiated locale. `GET /health` pings the database and returns `{"ok":true}`.
 ```
@@ -165,8 +170,11 @@ docker exec <slug>-check whoami                      # not root
 docker stop <slug>-check
 ```
 
-**14. Dev workflow.** justfile recipes: `dev` (`topcoat dev` with `PORT=<port>`), `check`, `fmt`, `test`, `migration`, `migrate`, `seed` (inserts the example notes, idempotent). `.zed/tasks.json` is committed with one task per local process, each calling a just recipe: dev, test, migrate. Every task sets `"cwd": "$ZED_WORKTREE_ROOT"`, `"use_new_terminal": true`, `"reveal": "always"`, `"hide": "never"`. `rust-analyzer.toml` sets `[rustfmt] overrideCommand = ["topcoat", "fmt", "--stdin", "--rustfmt"]`.
+**14. Dev workflow.** justfile recipes: `dev` (`HOST=127.0.0.1 PORT=<port> topcoat dev`), `check`, `fmt`, `test`, `migration` (`cargo run --quiet -- toasty migration generate`), `migrate` (`cargo run --quiet -- toasty migration apply`), `seed` (inserts the example notes, idempotent). `.zed/tasks.json` is committed with one task per local process, each calling a just recipe: dev, test, migrate. Every task sets `"cwd": "$ZED_WORKTREE_ROOT"`, `"use_new_terminal": true`, `"reveal": "always"`, `"hide": "never"`. `rust-analyzer.toml` sets `[rustfmt] overrideCommand = ["topcoat", "fmt", "--stdin", "--rustfmt"]`.
 Check: `just dev`, then `curl localhost:<port>/health` answers. `jq` parses the tasks file, and every command is a just recipe.
+
+Traps:
+- `topcoat dev` reads `HOST` and `PORT` from the environment and, when that port is taken, moves to the next free one and prints it. A check that curls the recipe's port can hit whatever already holds it; read the port the dev server prints.
 
 **15. A fresh clone passes CI.** A clone with no `.env`, with only `DATABASE_URL` exported (database `<pkg>_ci`), passes `just check`. Drop `<pkg>_ci` and `<pkg>_ci_test` afterwards. For GitHub, lint the workflow with `actionlint`; otherwise report not verified.
 
@@ -183,7 +191,7 @@ Check: `just dev`, then `curl localhost:<port>/health` answers. `jq` parses the 
 Check: `grep -nE '\.bootstrap|artifacts|bootstrapper' README.md AGENTS.md` finds nothing; `grep -ciE 'cargo add|just migration|t!|shard|topcoat ui|narrat|trailer' AGENTS.md` is at least 6.
 
 ## Versions
-`topcoat` and `topcoat-cli` 0.12.1, pinned exactly; the CLI and crate move together. Rust 1.99 in `rust-toolchain.toml` (Topcoat's MSRV). Toasty: the version `topcoat new` writes, pinned with `=`. Tailwind: the release Topcoat 0.12.1 verifies by default, or a `version` plus `version_checksum`. Other crates: `cargo add <crate>@<major.minor>`; resolved versions live in `Cargo.lock`, which is committed.
+`topcoat` and `topcoat-cli` 0.12.1, pinned exactly; the CLI and crate move together. Rust 1.99 in `rust-toolchain.toml` (Topcoat's MSRV). Toasty and `toasty-cli`: the version `topcoat new` 0.12.1 writes (0.11.0 when this was written), both pinned with `=`. The migration commands come from `toasty-cli` inside the app binary, so nothing extra is installed for them. Tailwind: the release Topcoat 0.12.1 verifies by default, or a `version` plus `version_checksum`. Other crates: `cargo add <crate>@<major.minor>`; resolved versions live in `Cargo.lock`, which is committed.
 
 ## Database
 Pass the password only through the environment, never echo it. With setup.json at `<bootstrapper repo>/.bootstrap/setup.json`, check whether the database exists:
