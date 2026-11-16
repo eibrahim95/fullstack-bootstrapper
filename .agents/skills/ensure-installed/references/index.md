@@ -14,3 +14,4 @@
 | node        | npx, npm            | js runtime, has npx         |
 | impeccable  |                     | agent skill, UI design      |
 | cookiecutter |                     | project templates           |
+| rust        | rustup, cargo       | Rust toolchain              |
