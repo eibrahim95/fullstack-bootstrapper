@@ -34,7 +34,7 @@ Importance inside the finished product. Empty P1 or P2 is fine.
 ### P2 (user deferred)
 
 ## Implementation Decisions
-Prose only, behavior and module level. Stack is `django+unpoly`; do not pick another.
+Prose only, behavior and module level. Name the stack only if idea or validation already fixed one; never pick one.
 - Modules built or changed, and their interfaces
 - Data model: entities, key fields, relations
 - Integrations and contracts

@@ -1,6 +1,6 @@
 # Stack and build rules (every agent reads this)
 
-The prototype must look like the real app, not run like it. The real product uses Basecoat (django-basecoat) and Tailwind for its look. The prototype uses the same two, so components and tokens carry over. How pages link and how widgets work is free: the simplest thing that runs from disk. Do not use Unpoly. Do not imitate Django, django-cotton, or django-unicorn.
+The prototype must look like the real app, not run like it. It uses its own fixed toolkit, whatever stack the real app is built on: Basecoat (shadcn-style components and tokens) and Tailwind for the look, so components and tokens carry over to most stacks. How pages link and how widgets work is free: the simplest thing that runs from disk. Do not use or imitate the app's framework, router, template syntax or component runtime.
 
 | Piece | Use here |
 |-------|----------|

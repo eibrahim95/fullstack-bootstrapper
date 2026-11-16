@@ -1,9 +1,9 @@
 ---
 name: bootstrap-project
-description: Create the app repo for a project from a registered stack, last pipeline step. Use after wireframes; runs in parallel with /build-html-prototype. Scaffolds new git repo, pushes generated code to main on a new GitHub repo, creates local DB, opens one PR with a commit per goal, moves done artifacts out of .bootstrap.
+description: Create the app repo for a project from a registered stack, last pipeline step. Use after wireframes; runs in parallel with /build-html-prototype. Scaffolds new git repo, pushes generated code to main on a new GitHub repo, creates local DB, commits agent skills onto the bootstrap branch, opens one PR with a commit per goal, moves done artifacts out of .bootstrap.
 ---
 # bootstrap-project
-Last step of the project pipeline. Creates the app's git repo from a stack in the registry and pushes the generated code to `main` on GitHub. Then it reaches the stack's goals on one branch, a commit per goal, opens a PR, and moves the project's planning files (idea, spec, journeys, wireframes...) next to the repo. Only `status.json` stays in `.bootstrap/projects/<id>/`.
+Last step of the project pipeline. Creates the app's git repo from a stack in the registry and pushes the generated code to `main` on GitHub. Then it reaches the stack's goals on one branch, a commit per goal, commits the agent skills from `templates/skills/` onto that same branch, opens a PR, and moves the project's planning files (idea, spec, journeys, wireframes...) next to the repo. Only `status.json` stays in `.bootstrap/projects/<id>/`.
 
 ## Names used below
 | name | means |
@@ -15,6 +15,7 @@ Last step of the project pipeline. Creates the app's git repo from a stack in th
 | repo folder | `<parent folder>/<slug>`: the new git repo |
 | artifacts folder | `<parent folder>/artifacts`: where planning files move to |
 | stack file | `references/stacks/<file>` named in the registry row of the chosen stack |
+| skill templates | `templates/skills/`: one directory per skill to install into the app repo. Not live skills of this repo. Do not run them here. |
 
 ## Called from /project
 /project usually runs this skill in a top-level thread, with every answer in the prompt: `parent=`, `slug=`, `stack=`, `owner=`, `visibility=`, one `key=value` per row of the stack file's Inputs table, `db=yes|no`, `approved=yes`.
@@ -35,7 +36,7 @@ If bootstrap is already `done`: report skipped, and say where the repo and artif
 If bootstrap is `running`: another thread owns it. Say so, show its `thread`, and stop. If the user says that thread is dead, continue (see resume below).
 When all checks pass, mark the step running: status helper `step bootstrap status=running path=null`.
 
-**Resume:** if `status.json` already has `repo_path` and that repo has a commit, the earlier run got past step 5. Jump to step 6; each later part skips what is already done (repo created, `main` pushed, database created, goal commits made, PR opened).
+**Resume:** if `status.json` already has `repo_path` and that repo has a commit, the earlier run got past step 5. Jump to step 6; each later part skips what is already done (repo created, `main` pushed, database created, goal commits made, skills committed, PR opened).
 
 ## 2 Ask where and how
 Ask everything in one round, each question with a recommended answer:
@@ -64,6 +65,7 @@ Read the stack file. Show the user:
 - the database name from the stack file's Database section, and the Postgres host, port and user from setup.json
 - the exact `gh repo create <owner>/<slug> --<visibility>` command, and that the generated code, with the baseline goals met, is pushed to `main` once its CI checks pass locally
 - that the goals land on branch `bootstrap/<stack id>`, one commit per goal, with a PR into `main` that the user merges
+- that every skill directory in `templates/skills/` is copied into the repo and committed on `bootstrap/<stack id>` before that push
 - which planning folders will move to the artifacts folder after the PR is open
 
 Ask `Create? (y/n)`, unless `approved=yes` was given. On no, report skipped. Nothing is written before the yes.
@@ -111,14 +113,31 @@ When a goal passes, commit it on its own: `git add -A`, check the staged files a
 A fix an earlier goal needs goes into the current goal's commit. A goal with nothing to commit (already met) gets no commit; say so in the PR. A check marked "after this goal's commit" runs right after that commit; a fix for it is amended into the same commit (nothing is pushed yet).
 If you stop: report `bootstrap-project: failed scaffold: <goal> <reason>`. Nothing is pushed and nothing moves. `main`, the GitHub repo and the branch's commits stay; running `/bootstrap-project <id>` again resumes on the branch.
 
-## 9 Push the branch and open the PR
-1. `git push -u origin bootstrap/<stack id>`. Never force.
-2. `gh pr create --base main --head bootstrap/<stack id> --title "Bootstrap <slug> on the <stack id> stack"`. The body lists every goal, one line each: its commit, and verified or not verified (why). If any goal is not verified, add `--draft`. Record it: status helper `set pr_url=<url>`.
+## 9 Install the agent skills
+On `bootstrap/<stack id>`, before the push. The skills have to be in a commit on that branch, not only on the local disk after the PR exists.
+Skill templates are `templates/skills/` in this repo. Every immediate directory there is one skill. Do not run them here, and do not add them one by one in this step: a later template is copied by the same command.
+From this repo, run:
+```
+python3 -I .agents/skills/bootstrap-project/scripts/install-skills.py <repo folder> templates/skills
+```
+The script copies each template directory to `<repo>/.agents/skills/<name>/` and symlinks `<repo>/.claude/skills/<name>` to `../../.agents/skills/<name>`. One link per skill. It does not link `.claude/skills` itself at `.agents/skills`. Running it again replaces those skill directories with the templates.
+Then, in the repo folder, if `git status --porcelain -- .agents/skills .claude/skills` is empty, the skills are already committed: skip the commit. Otherwise `git add .agents/skills .claude/skills`. Nothing else staged (no `.env`, `node_modules/`, `.venv/`). Commit with no trailers, for someone reading the app's history:
+```
+chore: add skills for cutting a PRD into specs
+
+Planning continues in this repo: cut the PRD into specs, then ticket and implement one spec at a time.
+```
+No goal numbers, and not the words goal, baseline, stack, or bootstrap.
+If the script fails: report `bootstrap-project: failed scaffold: skills <reason>`. If the commit fails: report `bootstrap-project: failed git: skills <reason>`. Nothing is pushed and nothing moves.
+
+## 10 Push the branch and open the PR
+1. `git push -u origin bootstrap/<stack id>`. Never force. On resume, this push sends the skills commit if the remote does not have it yet.
+2. `gh pr create --base main --head bootstrap/<stack id> --title "Bootstrap <slug> on the <stack id> stack"`. The body lists every goal, one line each: its commit, and verified or not verified (why). If any goal is not verified, add `--draft`. Record it: status helper `set pr_url=<url>`. On resume, if `pr_url` is already set, skip create.
 3. If the stack's CI is GitHub, watch the PR's run as in step 6. Its result counts for the stack's CI goal in the report. If it fails, fix it on the branch in a new commit `fix(ci): <what>` and push. Three failed runs, or still running after 15 minutes: mark that goal not verified, update the PR body and give the `gh run list` command.
 Never merge the PR: the user reviews and merges it.
 If any of this fails: report `bootstrap-project: failed github: <reason>`. Nothing moves. Running `/bootstrap-project <id>` again resumes here.
 
-## 10 Move the planning files
+## 11 Move the planning files
 Only after the PR is open. Run:
 ```
 python3 -I .agents/skills/bootstrap-project/scripts/move-artifacts.py <project folder> <artifacts folder> <repo folder>
@@ -127,10 +146,11 @@ The script moves only steps that are `done`. A running or pending html-prototype
 - **Exit 3, name clash** (only after an interrupted move, or files the user put in the artifacts folder): nothing was moved. Show the clashing folders, ask the user to move them aside, then run `/bootstrap-project <id>` again; it resumes here. Never merge or overwrite.
 - **Any other error:** report `bootstrap-project: failed move: <script error>`.
 
-## 11 Report
+## 12 Report
 Tell the user:
 - how to run it: the stack file's Run section, with the repo folder filled in
 - the GitHub URL, the PR URL, where the artifacts are, and that status stays in `<project folder>/status.json`
+- the skills now committed on `bootstrap/<stack id>`. In the app repo: `/plan-implementation` once, to file every release milestone and its spec issues. Then, later, `/to-tickets` on one spec issue and `/implement-spec` on that same issue. A milestone is that release's progress view, not the whole PRD, and not the input to `/implement-spec`.
 
 Then a `verified:` list with one line per stack goal, baseline goals first: `<n> <short name>: verified`, or `<n> <short name>: not verified (<why>)`. A goal whose check did not run, or ran only partly (no browser tools, database skipped), is not verified. Never pass a goal silently.
 
@@ -149,5 +169,6 @@ On failure also record it: status helper `step bootstrap status=failed result="<
 - Push `main` before its CI checks pass locally, push goal work to `main`, push branches other than `main` and `bootstrap/<stack id>`, force push, or merge the PR.
 - Change the global git config.
 - Move planning files before the PR is open.
+- Leave the agent skills uncommitted, or install them only after the push.
 - Write into a non-empty folder.
 - Edit other steps in status.json. The move script's path rewrite is the only exception.

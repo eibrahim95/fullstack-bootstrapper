@@ -4,3 +4,4 @@ One row per stack. Match user input on id or alias. New stack: add a row and a s
 | id | aliases | what | file |
 |---|---|---|---|
 | django+unpoly | django, django-cotton, basecoat | Django (ASGI), Celery, Channels, django-cotton, Unpoly, Alpine.js, django-basecoat, django-unicorn (high-interactivity parts only), Tailwind CSS, GCP-ready Docker files | [django_unpoly.md](django_unpoly.md) |
+| fastify+trpc+react | node, typescript, trpc, react, vite, fastify | pnpm + Turborepo monorepo on Node 24: Fastify 5 API with tRPC 11, Drizzle on Postgres with SQL migrations, React 18 + Vite 6, TanStack Query, React Router, Tailwind 3 + shadcn/ui, vitest, API container | [fastify_trpc_react.md](fastify_trpc_react.md) |

@@ -4,7 +4,7 @@ description: Build clickable HTML prototype from spec, journeys, screen inventor
 ---
 # build-html-prototype
 
-Static clickable prototype. Replaces Figma. User opens `OUT/index.html` straight from disk, no server, clicks every inventory screen. Looks like the real app: Basecoat components and tokens, Tailwind utilities. Plumbing is free: plain links, Alpine or plain JS. No Unpoly, no Django markers (`brief/stack.md`).
+Static clickable prototype. Replaces Figma. User opens `OUT/index.html` straight from disk, no server, clicks every inventory screen. Looks like the real app: Basecoat components and tokens, Tailwind utilities. Plumbing is free: plain links, Alpine or plain JS. No app-framework runtime or template markers (`brief/stack.md`).
 **You write no code.** Plan, spawn subagents, route findings, run commands, write Markdown. Read this file, `references/foundation.md`, `references/integration.md`, all of `references/brief/` before acting.
 
 ## 0 project

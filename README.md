@@ -11,8 +11,11 @@ Work is split across skills. Skills depend on each other and hand work off when 
 | Id | Stack |
 | --- | --- |
 | `django+unpoly` | Django (ASGI), Celery, Channels, django-cotton, Unpoly, Alpine.js, django-basecoat, django-unicorn (high-interactivity parts only), Tailwind CSS |
+| `fastify+trpc+react` | TypeScript monorepo (pnpm, Turborepo, Node 24): Fastify, tRPC, Drizzle on Postgres, React, Vite, TanStack Query, React Router, Tailwind CSS, shadcn/ui |
 
 `django+unpoly` is the first registered stack. Django owns the server. django-cotton, Unpoly, Alpine.js, and django-basecoat cover server-rendered UI, progressive enhancement, and small client behavior. django-unicorn is for high-interactivity parts only (live server state, many interdependent fields, polling). Tailwind CSS is the styling layer. Celery runs background tasks and Channels serves websockets, both on the local Redis. The repo comes from cookiecutter-django with Docker and GCP options on, so it carries the production Dockerfile and compose files.
+
+`fastify+trpc+react` is a TypeScript monorepo with an API and a single-page app. Fastify serves tRPC procedures, and the React app imports the router's type, so a server change that breaks a caller fails the type-check. Drizzle queries Postgres, whose schema changes through plain SQL migrations. The web app uses Vite, TanStack Query, React Router, Tailwind CSS 3 and shadcn/ui. The API ships as a container.
 
 ## Skills
 

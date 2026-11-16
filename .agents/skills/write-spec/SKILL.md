@@ -13,8 +13,8 @@ Precondition: step `validation` is `done` (GREEN, YELLOW proceed, or RED overrid
 Step `spec` already `done`: ask overwrite. No: report skipped. Yes: redo, warn later steps may be stale.
 
 ## read
-`idea` in `status.json`, `idea/idea.md`, `validation/validation.md`, root `README.md` stack section.
-Target stack is `django+unpoly` (Django, django-cotton, Unpoly, Alpine.js, django-basecoat, django-unicorn for high-interactivity parts only, Tailwind). Spec never picks another stack. Decisions stay at behavior and module level: no file paths, no code.
+`idea` in `status.json`, `idea/idea.md`, `validation/validation.md`.
+Stack: spec never picks one. If `idea.md` or `validation.md` names a stack id, use it as given: it only sets the vocabulary for module-level decisions. Else name none: stack is chosen at bootstrap. Decisions stay at behavior and module level: no file paths, no code.
 
 ## draft
 Synthesize the whole product from what is known. No re-interview for anything already answered (target user, alternative, whole product, risks, kill criteria, build/buy/rent).
