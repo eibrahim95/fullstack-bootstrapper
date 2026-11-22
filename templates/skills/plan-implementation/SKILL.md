@@ -21,6 +21,7 @@ This repo, and `gh` for this repo. Planning files sit in the sibling `artifacts`
 |---|---|
 | `../artifacts/spec/spec.md` | the PRD. Required. |
 | `../artifacts/wireframes/screen-inventory.md` | screens and the PRD stories they cover, when `../artifacts/wireframes/` exists. |
+| `../artifacts/html-prototype/` | the prototype, when it exists. Each screen is one or more HTML files whose name starts with its screen id (`<id>.html`, plus Arabic or phone variants such as `<id>.ar.m.dc.html`), found with `find ../artifacts/html-prototype -name '<id>.*html'`. Its `README.md` names any hosted copy (a claude.ai canvas or design system link) and its design files (`DESIGN.md`, `PRODUCT-RULES.md`, a `design-system/` folder). |
 
 An argument that is an absolute path to an artifacts directory replaces `../artifacts`. Missing `spec/spec.md`: stop. Do not go looking in another checkout.
 
@@ -28,7 +29,7 @@ An argument that is an absolute path to an artifacts directory replaces `../arti
 
 ## 1 Read
 
-Read the PRD. When the wireframes directory exists, read `screen-inventory.md` too. Product goals, non-goals, metrics, and validation notes stay in the PRD. A spec cites them and does not restate them.
+Read the PRD. When the wireframes directory exists, read `screen-inventory.md` too. When the prototype exists, read its `README.md` only: note the hosted links and the design files it names, and do not open the screen files. Product goals, non-goals, metrics, and validation notes stay in the PRD. A spec cites them and does not restate them.
 
 Done when every PRD flow is in mind and, if wireframes exist, every screen id is tied to the stories it covers.
 
@@ -58,7 +59,7 @@ If `/to-spec` is not available, stop: `plan-implementation: failed prereq: /to-s
 For each approved spec, in list order:
 
 - An issue with that exact title already (`gh issue list --state all --limit 200 --json number,title`): keep it. Do not invoke `/to-spec` again.
-- Otherwise invoke `/to-spec` once. The context for that invocation is only this spec: its title, the milestone it belongs to, the outcome, the PRD stories and decisions that belong to it, and what is out of scope. One invocation publishes one issue. Do not hand it the whole PRD, the whole milestone, or another spec's decisions.
+- Otherwise invoke `/to-spec` once. The context for that invocation is only this spec: its title, the milestone it belongs to, the outcome, the PRD stories and decisions that belong to it, and what is out of scope. When the prototype exists, add a **Design reference** for this spec: each of its screen ids with the prototype file paths for that id (absolute paths), the hosted canvas link from the prototype README with the note that the screen ids are the names on its screen map, and the design files and design-system folder the README names. Say the prototype is the visual reference to build against: read it, do not copy its files into the app. Local paths are for agents (they cannot open claude.ai links); the link is for people and Claude sessions. One invocation publishes one issue. Do not hand it the whole PRD, the whole milestone, or another spec's decisions.
 
 Keep each issue's number and URL. Done when every approved spec has one issue.
 
@@ -113,3 +114,4 @@ Last line, exactly one:
 - Point `/implement-spec` at the milestone.
 - Close a spec issue.
 - Read the PRD from anywhere except the artifacts directory above.
+- Paste prototype markup into an issue. When the prototype exists, leave a spec with screens out of its design reference.

@@ -129,7 +129,7 @@ Check, in the browser: `/ar/` mirrors (nav, form and list read right to left), a
 Traps:
 - A missing message renders its key, such as `greeting(name: "Ada")`, instead of falling back to another language. `topcoat l10n check` is the guard.
 
-**6. Tailwind and Topcoat UI.** `build.rs` renders Tailwind with the release pinned through `version(...)` and `version_checksum(...)`, or the default release, which Topcoat verifies itself. `topcoat ui init` installs the theme; components come from `topcoat ui add` into `src/components`: at least button, card, input and dropdown menu. Every control on the pages is one of them. `components.toml` is committed.
+**6. Tailwind and Topcoat UI.** `build.rs` renders Tailwind with the release pinned through `version(...)` and `version_checksum(...)`, or the default release, which Topcoat verifies itself. `topcoat ui init` installs the theme; components come from `topcoat ui add` into `src/components`: at least button, card and input, plus any other the pages use. Every control on the pages is one of them. `components.toml` is committed.
 ```
 topcoat ui list                                            # the installed components, no pending updates
 ```
@@ -138,8 +138,8 @@ Traps:
 - `build.rs` downloads the Tailwind CLI from GitHub. Offline builds and locked-down image builds fail unless `executable_env("TAILWIND_CLI")` points at a preinstalled binary.
 - Tailwind only sees class names written out in source. Classes built from strings at run time are missing from the CSS.
 
-**7. Dark mode.** Light, dark and system. The `dark` class on `<html>` before first paint (an inline script reading the stored choice), `color-scheme` following it. The control is the Topcoat UI dropdown menu with an icon and label.
-Check, in the browser: choose Dark and reload: dark from the first paint. In both themes and both directions, at desktop and phone width, nothing overflows sideways or shows as a bare unstyled control.
+**7. Dark mode.** Two themes, light and dark; there is no "system" choice. With nothing stored, the operating system's `prefers-color-scheme` picks the starting theme; once the user switches, that choice is stored and wins. The `dark` class on `<html>` before first paint (an inline script reading the stored choice, else the media query), `color-scheme` following it. The control is one Topcoat UI button with an icon and a label, switching between the two.
+Check, in the browser: with nothing stored, the page follows the OS setting; switch to Dark and reload: dark from the first paint; the control offers no third option. In both themes and both directions, at desktop and phone width, nothing overflows sideways or shows as a bare unstyled control.
 
 **8. Live updates with the runtime.** Adding a note re-renders only the list, through a `#[shard]`, not the whole page. A second shard shows the note count, updated over the `sse` feature when another browser adds a note. The shard validates its arguments; its endpoint does not inherit page guards.
 Check, in the browser: two windows on `/en/`; add a note in one; the other's count changes without a reload.

@@ -1,9 +1,10 @@
 ---
 name: bootstrap-project
-description: Create the app repo for a project from a registered stack, last pipeline step. Use after wireframes; runs in parallel with /build-html-prototype. Scaffolds new git repo, pushes generated code to main on a new GitHub repo, creates local DB, commits agent skills onto the bootstrap branch, opens one PR with a commit per goal, moves done artifacts out of .bootstrap.
+description: Create the app repo for a project from a registered stack, last pipeline step. Use after wireframes; runs in parallel with /build-html-prototype. Scaffolds new git repo, pushes generated code to main on a new GitHub repo (or into a folder of an existing one), creates local DB, commits agent skills onto the bootstrap branch, opens one PR with a commit per goal, moves done artifacts out of .bootstrap.
 ---
 # bootstrap-project
 Last step of the project pipeline. Creates the app's git repo from a stack in the registry and pushes the generated code to `main` on GitHub. Then it reaches the stack's goals on one branch, a commit per goal, commits the agent skills from `templates/skills/` onto that same branch, opens a PR, and moves the project's planning files (idea, spec, journeys, wireframes...) next to the repo. Only `status.json` stays in `.bootstrap/projects/<id>/`.
+With `target=existing` it puts the app into a folder of a GitHub repo that already exists instead; see [Into an existing repo](#into-an-existing-repo).
 
 ## Names used below
 | name | means |
@@ -12,13 +13,15 @@ Last step of the project pipeline. Creates the app's git repo from a stack in th
 | setup.json | `.bootstrap/setup.json`: Postgres, Redis and GitHub account from /setup. Holds passwords: never print, paste into chat, or commit them. |
 | status helper | `python3 -I .agents/skills/project/scripts/status.py <project folder>`. The only way to write `status.json`: `step bootstrap key=value ...` updates this step, `set key=value` sets a top-level key. It locks the file, because the html-prototype top-level thread writes it at the same time. Never edit `status.json` by hand. |
 | parent folder | folder the user picks for this project only. Holds the repo and the artifacts. |
-| repo folder | `<parent folder>/<slug>`: the new git repo |
+| repo folder | `<parent folder>/<slug>`: the new git repo. Existing repo: `<parent folder>/<repo name>`, a fresh clone |
+| app folder | where the stack's code lives: the repo folder, or `<repo folder>/<app_dir>` in an existing repo |
+| default branch | `main`; in a non-empty existing repo, that repo's default branch |
 | artifacts folder | `<parent folder>/artifacts`: where planning files move to |
 | stack file | `references/stacks/<file>` named in the registry row of the chosen stack |
 | skill templates | `templates/skills/`: one directory per skill to install into the app repo. Not live skills of this repo. Do not run them here. |
 
 ## Called from /project
-/project usually runs this skill in a top-level thread, with every answer in the prompt: `parent=`, `slug=`, `stack=`, `owner=`, `visibility=`, one `key=value` per row of the stack file's Inputs table, `db=yes|no`, `approved=yes`.
+/project usually runs this skill in a top-level thread, with every answer in the prompt: `parent=`, `slug=`, `stack=`, `target=new|existing` (missing = `new`), `owner=` and `visibility=` (new) or `repo=` and `app_dir=` (existing), one `key=value` per row of the stack file's Inputs table, `db=yes|no`, `approved=yes`.
 Use given answers and never ask again: nobody is watching that thread. Every check below still applies. If a given answer fails a check, report failed instead of asking. If an answer with no default is missing, report `failed prereq`.
 
 ## 1 Pick the project and check prerequisites
@@ -36,21 +39,24 @@ If bootstrap is already `done`: report skipped, and say where the repo and artif
 If bootstrap is `running`: another thread owns it. Say so, show its `thread`, and stop. If the user says that thread is dead, continue (see resume below).
 When all checks pass, mark the step running: status helper `step bootstrap status=running path=null`.
 
-**Resume:** if `status.json` already has `repo_path` and that repo has a commit, the earlier run got past step 5. Jump to step 6; each later part skips what is already done (repo created, `main` pushed, database created, goal commits made, skills committed, PR opened).
+**Resume:** if `status.json` already has `repo_path` and that repo has a commit (existing repo: a commit holding the app folder, on the branch step 5 commits to), the earlier run got past step 5. Jump to step 6; each later part skips what is already done (repo created, `main` pushed, database created, goal commits made, skills committed, PR opened).
 
 ## 2 Ask where and how
 Ask everything in one round, each question with a recommended answer:
 | question | recommend |
 |---|---|
 | parent folder (for this project only) | `~/Projects/<slug>`. Expand `~`, make the path absolute. |
-| slug (repo name), letters, digits and `-` only | the `slug` in status.json |
-| GitHub owner, user or org | setup.json `github.login` |
-| visibility | private |
+| slug (repo name; the app's name in an existing repo), letters, digits and `-` only | the `slug` in status.json |
+| target: a new GitHub repo, or a folder in an existing one | new |
+| new: GitHub owner, user or org | setup.json `github.login` |
+| new: visibility | private |
+| existing: repo, `<owner>/<name>` | none, must be answered |
+| existing: app_dir, the folder in that repo for the app | `.` if the repo is empty, else `apps/<slug>` |
 | stack | Read [references/stacks/index.md](references/stacks/index.md). One stack: pick it and say so. Several: list them. |
 | every row of the stack file's Inputs table | that row's recommendation. Rows with no default (like domain) must be answered. |
 
 Then check two rules. If either fails, say why and ask again:
-- **GitHub:** `gh repo view <owner>/<slug>` must find nothing. We only create new repos.
+- **GitHub:** `gh repo view <owner>/<slug>` must find nothing. A new repo is never one that exists. Existing repo: the rules in [Into an existing repo](#into-an-existing-repo) instead.
 - **Parent folder:** it must not exist (we create it) or be an empty folder (we use it). Anything else (a non-empty folder, a file, a link to a non-empty folder) is refused. We never mix the project into existing content.
 
 When resuming, skip both rules: the repo and folder are ours already.
@@ -121,6 +127,7 @@ From this repo, run:
 python3 -I .agents/skills/bootstrap-project/scripts/install-skills.py <repo folder> templates/skills
 ```
 The script copies each template directory to `<repo>/.agents/skills/<name>/` and symlinks `<repo>/.claude/skills/<name>` to `../../.agents/skills/<name>`. One link per skill. It does not link `.claude/skills` itself at `.agents/skills`. Running it again replaces those skill directories with the templates.
+The templates hand off to `/to-spec`, `/to-tickets` and `/implement-spec` from mattpocock/skills. Those are installed once per user, not into the repo: files in `~/.agents/skills/<name>/`, each linked from `~/.claude/skills/<name>`. If `~/.agents/skills/to-spec` is missing, say so in the report; do not install them into the repo.
 Then, in the repo folder, if `git status --porcelain -- .agents/skills .claude/skills` is empty, the skills are already committed: skip the commit. Otherwise `git add .agents/skills .claude/skills`. Nothing else staged (no `.env`, `node_modules/`, `.venv/`). Commit with no trailers, for someone reading the app's history:
 ```
 chore: add skills for cutting a PRD into specs
@@ -164,11 +171,25 @@ The last line is exactly one of:
 | skipped | `bootstrap-project: skipped <id>` |
 On failure also record it: status helper `step bootstrap status=failed result="<line>"`. Leave the top-level `state` as it is.
 
+## Into an existing repo
+`target=existing`: the app goes into the app folder of a GitHub repo that already exists. Every step above runs, with these differences. Empty repo = no commits (`gh repo view <repo> --json isEmpty` is true); it gets `main` exactly like a new repo. Non-empty repo: its default branch is never pushed; everything arrives through the PR.
+| step | difference |
+|---|---|
+| 2 rules | Replace the GitHub rule. `gh repo view <repo> --json isEmpty,defaultBranchRef,viewerPermission` finds it, and `viewerPermission` is `ADMIN`, `MAINTAIN` or `WRITE`. Non-empty repo, on its default branch: `app_dir` is not `.` and does not exist (`gh api repos/<repo>/contents/<app_dir>` is a 404); branch `bootstrap/<stack id>` does not exist; no CI file named `<slug>` exists; no directory in `templates/skills/` has the name of one in `.agents/skills/` or `.claude/skills/`. Any clash: name it and ask again; with given answers, `failed prereq`. The parent folder rule is unchanged. |
+| 3 plan | Show `gh repo clone <repo> <repo folder>` instead of `gh repo create`, the app folder, and where the baseline commit goes: empty repo, `main`, pushed; non-empty, the first commit of `bootstrap/<stack id>`. |
+| 4 generate | First `gh repo clone <repo> <repo folder>` (an empty repo clones with a warning). Then run the Source steps into the app folder. A generator that refuses an existing destination, with the app folder being the repo folder: generate into `<parent folder>/.gen-<slug>`, move everything in it into the repo folder, delete it. From here on, every path and command in the stack file that names the repo folder means the app folder. Only git, the CI file and the skills (step 9) stay at the repo root. |
+| 5 first commit | No `git init`. Empty repo: `git symbolic-ref HEAD refs/heads/main`. Non-empty: `git switch -c bootstrap/<stack id> origin/<default branch>`. App folder not the repo root: the stack's ignore file lives in the app folder; the CI file lives at the repo root's CI location, named `<slug>`, triggered only by changes under `<app_dir>/` and to itself, every step run in the app folder (GitHub: `paths:` and `defaults.run.working-directory`), caches keyed to the app folder. Run that file's jobs locally; in a non-empty repo also every existing workflow the changed paths trigger. An existing workflow whose latest run on the default branch also fails (`gh run list --branch <default branch> --workflow <file> -L 1`) is reported, not fixed. Record `set repo_path=<repo folder> app_path=<app folder> target=existing`. |
+| 6 GitHub | No `gh repo create`; the clone set `origin`. `set github_url=<origin url>`. Empty repo: push `main` and watch its CI as written. Non-empty: skip this step's push and CI watch. |
+| 8 goals | Empty repo: branch off `main` as written. Non-empty: stay on `bootstrap/<stack id>`. App folder not the repo root, with the goal that writes the README and AGENTS.md: empty repo, also a root `README.md` (title, one-liner, link to `<app_dir>/`) and a root `AGENTS.md` that points at `<app_dir>/AGENTS.md`; non-empty, one line in the root `AGENTS.md` pointing at `<app_dir>/AGENTS.md`, creating the file if missing. App folder not the repo root, with the goal that adds the dev workflow: the task runner and editor tasks live at the repo root, so they work from where the editor opens the repo. Root `justfile` with `mod <app> '<app_dir>'` (recipes run in the app folder: `just <app> dev`), and the editor tasks file at the root (Zed: `.zed/tasks.json`), labelled `<app>: <recipe>` and calling `just <app> <recipe>`, none in the app folder. The app's own justfile stays. |
+| 10 PR | `--base <default branch>`. Non-empty: the body lists the baseline goals first; their commit opens the branch. |
+| 12 report | The Run section with the app folder filled in. |
+
 ## Never
 - Print or commit passwords or `.env`.
 - Push `main` before its CI checks pass locally, push goal work to `main`, push branches other than `main` and `bootstrap/<stack id>`, force push, or merge the PR.
+- Push the default branch of a non-empty existing repo, or create a repo when `target=existing`.
 - Change the global git config.
 - Move planning files before the PR is open.
 - Leave the agent skills uncommitted, or install them only after the push.
-- Write into a non-empty folder.
+- Write into a non-empty folder. In an existing repo, write nothing outside the app folder except the CI file, `.agents/skills`, `.claude/skills`, and the root README, AGENTS.md, `justfile` and editor tasks in step 8; never overwrite an existing skill.
 - Edit other steps in status.json. The move script's path rewrite is the only exception.
